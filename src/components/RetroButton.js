@@ -1,5 +1,7 @@
 import React from 'react';
-import { TouchableOpacity, Text, StyleSheet } from 'react-native';
+import { TouchableOpacity, Text, StyleSheet, Dimensions } from 'react-native';
+
+const { width, height } = Dimensions.get('window');
 
 const RetroButton = ({ title, onPress }) => (
   <TouchableOpacity style={styles.button} onPress={onPress}>
@@ -11,22 +13,25 @@ const styles = StyleSheet.create({
   button: {
     backgroundColor: '#0a0a23',
     borderColor: '#00fff7',
-    borderWidth: 3,
-    borderRadius: 10,
-    paddingVertical: 22,
-    paddingHorizontal: 60,
-    marginTop: 20,
+    borderWidth: Math.min(3, width * 0.008),
+    borderRadius: Math.min(10, width * 0.025),
+    paddingVertical: Math.min(18, height * 0.025),
+    paddingHorizontal: Math.min(50, width * 0.12),
+    marginTop: Math.min(16, height * 0.02),
     shadowColor: '#00fff7',
     shadowOpacity: 0.5,
     shadowRadius: 6,
     alignItems: 'center',
+    width: Math.min(width * 0.75, 280),
+    minWidth: Math.min(width * 0.6, 200),
   },
   text: {
     color: '#00fff7',
-    fontSize: 32,
+    fontSize: Math.min(width * 0.07, 28),
     fontWeight: 'bold',
     fontFamily: 'monospace',
     letterSpacing: 2,
+    textAlign: 'center',
   },
 });
 
