@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Dimensions } from 'react-native';
+import React, { useEffect, useState, useRef } from 'react';
+import { View, Text, StyleSheet, Dimensions, Animated, Easing, ScrollView, Image } from 'react-native';
 
 const { width, height } = Dimensions.get('window');
 const pixelFont = 'PressStart2P_400Regular';
@@ -17,15 +17,18 @@ const pixelStroke = [
 
 const TOTAL_BARS = 14;
 const ANIMATION_DURATION = 2200; // ms
-
 const MAX_CONTAINER_WIDTH = 340;
-const MAX_FONT_SIZE = 32;
-const MIN_FONT_SIZE = 14;
-const getFontSize = (factor) => Math.max(MIN_FONT_SIZE, Math.min(MAX_FONT_SIZE, width * factor));
-const CENTER_TEXT_FONT_FACTOR = 0.042; // Reducido para que quepa mejor
+const getFontSize = (factor) => Math.max(14, Math.min(32, width * factor));
+const CENTER_TEXT_FONT_FACTOR = 0.052;
+
+const scanlineColor = 'rgba(255,255,255,0.07)';
 
 const LoadingScreen = ({ navigation }) => {
   const [progress, setProgress] = useState(0);
+  const [showBlink, setShowBlink] = useState(true);
+  const progressAnim = useRef(new Animated.Value(0)).current;
+  const blinkAnim = useRef(new Animated.Value(1)).current;
+  const scanlineAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     let interval = setInterval(() => {
@@ -41,50 +44,151 @@ const LoadingScreen = ({ navigation }) => {
     return () => clearInterval(interval);
   }, []);
 
-  return (
-    <View style={styles.root}>
-      {/* Líneas superiores tipo consola */}
-      <View style={styles.topLines}>
-        {[...Array(6)].map((_, i) => (
-          <View key={i} style={[styles.topLine, { top: i * 4 }]} />
+  // Animación de brillo en la barra de progreso
+  useEffect(() => {
+    Animated.loop(
+      Animated.timing(progressAnim, {
+        toValue: 1,
+        duration: 1200,
+        useNativeDriver: false,
+        easing: Easing.inOut(Easing.ease),
+      })
+    ).start();
+  }, []);
+
+  // Parpadeo en el texto principal
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(blinkAnim, { toValue: 0.3, duration: 400, useNativeDriver: false }),
+        Animated.timing(blinkAnim, { toValue: 1, duration: 400, useNativeDriver: false }),
+      ])
+    ).start();
+  }, []);
+
+  // Animación de scanlines en movimiento
+  useEffect(() => {
+    Animated.loop(
+      Animated.timing(scanlineAnim, {
+        toValue: 1,
+        duration: 2200,
+        useNativeDriver: false,
+        easing: Easing.linear,
+      })
+    ).start();
+  }, []);
+
+  // Scanlines dinámicas
+  const scanlineCount = 32;
+  const scanlineHeight = 3;
+  const scanlineSpacing = 2;
+  const scanlineOffset = scanlineAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, scanlineSpacing + scanlineHeight],
+  });
+
+  function RenderScanlines() {
+    return (
+      <Animated.View
+        pointerEvents="none"
+        style={[styles.scanlinesContainer, { top: scanlineOffset }]}
+      >
+        {Array.from({ length: scanlineCount }).map((_, i) => (
+          <View
+            key={i}
+            style={{
+              width: '100%',
+              height: scanlineHeight,
+              backgroundColor: 'rgba(0,255,247,0.18)',
+              marginBottom: scanlineSpacing,
+            }}
+          />
         ))}
-      </View>
-      {/* Puntos de las esquinas superiores */}
-      <View style={[styles.cornerDot, styles.dotTopLeft]} />
-      <View style={[styles.cornerDot, styles.dotTopRight]} />
-      {/* Contenido principal centrado verticalmente */}
-      <View style={{ flex: 1, justifyContent: 'space-evenly', alignItems: 'center', width: '100%' }}>
+      </Animated.View>
+    );
+  }
+
+  return (
+    <View style={{ flex: 1, backgroundColor: '#0a0a23' }}>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        {/* Líneas superiores tipo consola */}
+        <View style={styles.topLines}>
+          {[...Array(6)].map((_, i) => (
+            <View key={i} style={[styles.topLine, { top: i * 4 }]} />
+          ))}
+        </View>
+        {/* Puntos decorativos mejor distribuidos */}
+        <View style={[styles.cornerDot, styles.dotTopLeft]} />
+        <View style={[styles.cornerDot, styles.dotTopRight]} />
+        <View style={[styles.cornerDot, styles.dotBottomLeft]} />
+        <View style={[styles.cornerDot, styles.dotBottomRight]} />
+        <View style={[styles.cornerDotBlue, styles.dotMidLeft]} />
+        <View style={[styles.cornerDotBlue, styles.dotMidRight]} />
+        <View style={[styles.cornerDotBlue, styles.dotBottomLeftBlue]} />
+        <View style={[styles.cornerDotBlue, styles.dotBottomRightBlue]} />
+
+        {/* Logo principal */}
         <View style={styles.logoWrapper}>
           <Text style={[styles.logoTri, ...pixelStroke]}>TRI</Text>
           <Text style={[styles.logoCade, ...pixelStroke]}>CADE</Text>
         </View>
+
+        {/* Espaciado reducido */}
+        <View style={{ height: height * 0.02 }} />
+
+        {/* Recuadro central con scanlines y moneda */}
         <View style={styles.centerBoxWrapper}>
           <View style={styles.centerBoxBorder}>
             <View style={styles.centerBox}>
-              <Text style={[styles.centerText, { color: '#00fff7' }, ...pixelStroke]}>Insertando monedas virtuales...</Text>
-              <Text style={[styles.centerText, { color: '#ff2e7e', marginTop: 8 }, ...pixelStroke]}>¡gratis esta vez!</Text>
+              <RenderScanlines />
+              <Text
+                style={[
+                  styles.centerText,
+                  { color: '#00fff7' },
+                  ...pixelStroke,
+                ]}
+                numberOfLines={2}
+                adjustsFontSizeToFit
+              >
+                Insertando monedas...
+              </Text>
+              <Text style={[styles.centerText, { color: '#ff2e7e', marginTop: 2, lineHeight: getFontSize(CENTER_TEXT_FONT_FACTOR * 1.1) }, ...pixelStroke]}>¡gratis esta vez!</Text>
             </View>
           </View>
         </View>
+
+        {/* Espaciado reducido */}
+        <View style={{ height: height * 0.03 }} />
+
+        {/* Bloque de sistema y barra de progreso */}
         <View style={styles.systemBlock}>
           <View style={styles.systemRow}>
             <View style={styles.sideDot} />
             <View style={styles.systemMsgWrapper}>
-              <Text style={[styles.systemMsg, ...pixelStroke]}>Iniciando sistema.{"\n"}Bip Bop ...</Text>
+              <Text style={[styles.systemMsg, styles.systemMsgTwoLines, ...pixelStroke]}>
+                Iniciando sistema{"\n"}Bip Bop...
+              </Text>
             </View>
             <View style={styles.sideDot} />
           </View>
+          <View style={{ height: height * 0.025 }} />
           <View style={styles.progressRow}>
             <View style={styles.sideDot} />
             <View style={styles.progressBarWrapper}>
               <View style={styles.progressBarBorder}>
                 <View style={styles.progressBar}>
                   {[...Array(TOTAL_BARS)].map((_, i) => (
-                    <View
+                    <Animated.View
                       key={i}
                       style={[
                         styles.progressBarItem,
-                        { backgroundColor: i < progress ? '#00fff7' : 'transparent', borderColor: '#00fff7' },
+                        {
+                          backgroundColor: i < progress ? '#00fff7' : 'transparent',
+                          borderColor: '#00fff7',
+                          shadowColor: '#00fff7',
+                          shadowOpacity: progressAnim.interpolate({inputRange: [0,1], outputRange: [0.2, 0.7]}),
+                          shadowRadius: progressAnim.interpolate({inputRange: [0,1], outputRange: [2, 6]}),
+                        },
                       ]}
                     />
                   ))}
@@ -94,23 +198,18 @@ const LoadingScreen = ({ navigation }) => {
             <View style={styles.sideDot} />
           </View>
         </View>
-      </View>
+      </ScrollView>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: '#0a0a23',
+  scrollContent: {
+    flexGrow: 1,
     alignItems: 'center',
-    justifyContent: 'flex-start',
-    paddingTop: 18,
-    width: '100%',
-    height: '100%',
-    minHeight: height,
-    paddingVertical: 0,
-    position: 'relative',
+    justifyContent: 'center',
+    paddingBottom: height * 0.04,
+    backgroundColor: '#0a0a23',
   },
   topLines: {
     position: 'absolute',
@@ -132,21 +231,36 @@ const styles = StyleSheet.create({
     position: 'absolute',
   },
   cornerDot: {
-    width: width * 0.045,
-    height: width * 0.045,
+    width: width * 0.035,
+    height: width * 0.035,
     backgroundColor: '#ff2e7e',
-    borderRadius: width * 0.0225,
+    borderRadius: width * 0.0175,
     position: 'absolute',
     zIndex: 2,
   },
-  dotTopLeft: { top: height * 0.03, left: width * 0.04 },
-  dotTopRight: { top: height * 0.03, right: width * 0.04 },
+  cornerDotBlue: {
+    width: width * 0.045,
+    height: width * 0.045,
+    backgroundColor: '#00fff7',
+    borderRadius: width * 0.0225,
+    position: 'absolute',
+    zIndex: 2,
+    opacity: 0.8,
+  },
+  dotTopLeft: { top: height * 0.03, left: width * 0.05 },
+  dotTopRight: { top: height * 0.03, right: width * 0.05 },
+  dotBottomLeft: { bottom: height * 0.03, left: width * 0.05 },
+  dotBottomRight: { bottom: height * 0.03, right: width * 0.05 },
+  dotMidLeft: { top: height * 0.22, left: width * 0.08 },
+  dotMidRight: { top: height * 0.22, right: width * 0.08 },
+  dotBottomLeftBlue: { bottom: height * 0.12, left: width * 0.18 },
+  dotBottomRightBlue: { bottom: height * 0.12, right: width * 0.18 },
   logoWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 0,
-    marginBottom: 8,
+    marginTop: height * 0.04,
+    marginBottom: 0,
     alignSelf: 'center',
     backgroundColor: '#23233a',
     borderRadius: 12,
@@ -178,7 +292,7 @@ const styles = StyleSheet.create({
   },
   centerBoxWrapper: {
     marginTop: 0,
-    marginBottom: 12,
+    marginBottom: 0,
     alignSelf: 'center',
     width: '90%',
     maxWidth: MAX_CONTAINER_WIDTH,
@@ -197,12 +311,21 @@ const styles = StyleSheet.create({
     borderColor: '#ff2e7e',
     borderRadius: 16,
     backgroundColor: '#101926',
-    paddingVertical: height * 0.035,
+    paddingVertical: height * 0.025,
     paddingHorizontal: width * 0.04,
     alignItems: 'center',
     minWidth: 180,
     maxWidth: MAX_CONTAINER_WIDTH,
     width: '100%',
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  scanlinesContainer: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 10,
+    pointerEvents: 'none',
+    flexDirection: 'column',
+    opacity: 0.5,
   },
   centerText: {
     fontFamily: pixelFont,
@@ -239,9 +362,9 @@ const styles = StyleSheet.create({
   systemMsg: {
     color: '#fff',
     fontFamily: pixelFont,
-    fontSize: getFontSize(0.042),
+    fontSize: getFontSize(0.052),
     textAlign: 'center',
-    lineHeight: getFontSize(0.052),
+    lineHeight: getFontSize(0.062),
     maxWidth: '100%',
     marginBottom: 0,
   },
@@ -288,12 +411,18 @@ const styles = StyleSheet.create({
   },
   progressBarItem: {
     flex: 1,
-    height: 20,
+    height: 24,
     borderRadius: 5,
     borderWidth: 2,
     marginHorizontal: 2,
     minWidth: 10,
     maxWidth: 24,
+  },
+  systemMsgTwoLines: {
+    lineHeight: getFontSize(0.058),
+    marginBottom: height * 0.008,
+    fontSize: getFontSize(0.052),
+    textAlign: 'center',
   },
 });
 
