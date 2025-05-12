@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { View, Text, StyleSheet, Image, Dimensions, TouchableOpacity, Animated, Pressable } from 'react-native';
+import { View, Text, StyleSheet, Image, Dimensions, TouchableOpacity, Animated, Pressable, ScrollView } from 'react-native';
 import RetroButton from '../components/RetroButton';
 
 const { width, height } = Dimensions.get('window');
@@ -41,8 +41,8 @@ const games = [
     iconTint: '#00fff7',
     titleTri: 'DÚ',
     titleCade: 'OS',
-    desc: 'Activa tu memoria y encuentra',
-    desc2: 'las parejas',
+    desc: 'Activa tu memoria y',
+    desc2: 'encuentra las parejas',
     desc3: 'perdidas del hiperespacio.',
   },
 ];
@@ -52,6 +52,7 @@ export default function GamesScreen() {
   const bounceAnim = useRef(new Animated.Value(1)).current;
   const [activeTab, setActiveTab] = useState('home');
   const [activeGame, setActiveGame] = useState(0);
+  const scrollRef = useRef();
 
   const handleIconPressIn = () => {
     Animated.spring(bounceAnim, {
@@ -68,7 +69,16 @@ export default function GamesScreen() {
     }).start();
   };
 
-  const game = games[activeGame];
+  // Sincroniza el paginador con el slide
+  const onScroll = (e) => {
+    const page = Math.round(e.nativeEvent.contentOffset.x / width);
+    if (page !== activeGame) setActiveGame(page);
+  };
+  // Cuando se toca un punto, desliza el ScrollView
+  const goToGame = (i) => {
+    setActiveGame(i);
+    scrollRef.current?.scrollTo({ x: i * width, animated: true });
+  };
 
   return (
     <View style={styles.root}>
@@ -78,41 +88,54 @@ export default function GamesScreen() {
         <Text style={[styles.logoCade, ...pixelStroke]}>CADE</Text>
       </View>
 
-      {/* Card principal dinámica */}
-      <View style={styles.cardWrapper}>
-        <View style={styles.cardBorder}>
-          <View style={styles.cardContent}>
-            <Pressable
-              onPressIn={handleIconPressIn}
-              onPressOut={handleIconPressOut}
-              style={{ alignItems: 'center', justifyContent: 'center' }}
-            >
-              <Animated.Image
-                source={game.icon}
-                style={[styles.cardIcon, { transform: [{ scale: bounceAnim }], tintColor: game.iconTint }]}
-                resizeMode="contain"
-              />
-            </Pressable>
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}>
-              <Text style={[styles.cardTitle, styles.cardTitleTri, ...pixelStroke]}>{game.titleTri}</Text>
-              <Text style={[styles.cardTitle, styles.cardTitleCade, ...pixelStroke]}>{game.titleCade}</Text>
-            </View>
-            <Text style={styles.cardDesc} numberOfLines={2} adjustsFontSizeToFit>{game.desc}</Text>
-            <Text style={styles.cardDesc2} numberOfLines={2} adjustsFontSizeToFit>{game.desc2}</Text>
-            {game.desc3 && (
-              <Text style={styles.cardDesc2} numberOfLines={2} adjustsFontSizeToFit>{game.desc3}</Text>
-            )}
-            <View style={{ marginTop: 18 }}>
-              <RetroButton
-                title="¡EXPLORAR!"
-                onPress={() => {}}
-                style={styles.exploreBtn}
-                activeOpacity={0.7}
-              />
+      {/* Card principal deslizable */}
+      <ScrollView
+        ref={scrollRef}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        onScroll={onScroll}
+        scrollEventThrottle={16}
+        style={styles.cardsScroll}
+        contentContainerStyle={{ alignItems: 'center', justifyContent: 'center' }}
+      >
+        {games.map((game, idx) => (
+          <View style={styles.cardScrollItem} key={game.key}>
+            <View style={styles.cardBorder}>
+              <View style={styles.cardContent}>
+                <Pressable
+                  onPressIn={handleIconPressIn}
+                  onPressOut={handleIconPressOut}
+                  style={{ alignItems: 'center', justifyContent: 'center' }}
+                >
+                  <Animated.Image
+                    source={game.icon}
+                    style={[styles.cardIcon, { transform: [{ scale: bounceAnim }], tintColor: game.iconTint }]}
+                    resizeMode="contain"
+                  />
+                </Pressable>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}>
+                  <Text style={[styles.cardTitle, styles.cardTitleTri, ...pixelStroke]}>{game.titleTri}</Text>
+                  <Text style={[styles.cardTitle, styles.cardTitleCade, ...pixelStroke]}>{game.titleCade}</Text>
+                </View>
+                <Text style={styles.cardDesc} numberOfLines={2} adjustsFontSizeToFit>{game.desc}</Text>
+                <Text style={styles.cardDesc2} numberOfLines={2} adjustsFontSizeToFit>{game.desc2}</Text>
+                {game.desc3 && (
+                  <Text style={styles.cardDesc2} numberOfLines={2} adjustsFontSizeToFit>{game.desc3}</Text>
+                )}
+                <View style={{ marginTop: 18 }}>
+                  <RetroButton
+                    title="¡EXPLORAR!"
+                    onPress={() => {}}
+                    style={styles.exploreBtn}
+                    activeOpacity={0.7}
+                  />
+                </View>
+              </View>
             </View>
           </View>
-        </View>
-      </View>
+        ))}
+      </ScrollView>
 
       {/* Paginador de puntos interactivo */}
       <View style={styles.paginator}>
@@ -120,7 +143,7 @@ export default function GamesScreen() {
           <TouchableOpacity
             key={g.key}
             style={[styles.dot, i === activeGame ? styles.dotActive : styles.dotInactive]}
-            onPress={() => setActiveGame(i)}
+            onPress={() => goToGame(i)}
             accessibilityLabel={`Paginador ${g.key}`}
           />
         ))}
@@ -189,12 +212,19 @@ const styles = StyleSheet.create({
     marginLeft: 2,
     marginRight: 2,
   },
-  cardWrapper: {
-    width: '94%',
-    maxWidth: 440,
+  cardsScroll: {
+    width: '100%',
     alignSelf: 'center',
     marginTop: height * 0.01,
     marginBottom: height * 0.01,
+  },
+  cardScrollItem: {
+    width: Math.min(width * 0.94, 440),
+    alignSelf: 'center',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: (width - Math.min(width * 0.94, 440)) / 2,
+    height: Math.max(height * 0.56, 480),
   },
   cardBorder: {
     borderWidth: 6,
@@ -206,6 +236,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.45,
     shadowRadius: 16,
     shadowOffset: { width: 0, height: 0 },
+    height: '100%',
   },
   cardContent: {
     borderWidth: 4,
@@ -219,6 +250,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 0 },
+    height: '100%',
   },
   cardIcon: {
     width: Math.min(width * 0.22, 80),
