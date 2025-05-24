@@ -3,9 +3,9 @@ import { TouchableOpacity, Text, StyleSheet, Dimensions } from 'react-native';
 
 const { width, height } = Dimensions.get('window');
 
-const RetroButton = ({ title, onPress }) => (
-  <TouchableOpacity style={styles.button} onPress={onPress}>
-    <Text style={styles.text}>{title}</Text>
+const RetroButton = ({ title, onPress, style, textStyle }) => (
+  <TouchableOpacity style={[styles.button, style]} onPress={onPress}>
+    <Text style={[styles.text, textStyle]}>{title}</Text>
   </TouchableOpacity>
 );
 
@@ -15,7 +15,7 @@ const styles = StyleSheet.create({
     borderColor: '#00fff7',
     borderWidth: Math.min(3, width * 0.008),
     borderRadius: Math.min(10, width * 0.025),
-    paddingVertical: Math.min(18, height * 0.025),
+    paddingVertical: Math.min(10, height * 0.018),
     paddingHorizontal: Math.min(50, width * 0.12),
     marginTop: Math.min(16, height * 0.02),
     shadowColor: '#00fff7',
@@ -27,11 +27,12 @@ const styles = StyleSheet.create({
   },
   text: {
     color: '#00fff7',
-    fontSize: Math.min(width * 0.07, 28),
+    fontSize: Math.min(width * 0.045, 18),
     fontWeight: 'bold',
-    fontFamily: 'monospace',
+    fontFamily: 'PressStart2P_400Regular',
     letterSpacing: 2,
     textAlign: 'center',
+    lineHeight: Math.min(width * 0.055, 22),
   },
 });
 

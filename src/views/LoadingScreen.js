@@ -1,7 +1,17 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, StyleSheet, Dimensions, Animated, Easing, ScrollView, Image } from 'react-native';
+import { View, Text, StyleSheet, Dimensions, Animated, Easing, ScrollView, Image, SafeAreaView } from 'react-native';
+import {
+  screenWidth as width,
+  screenHeight as height,
+  wp,
+  hp,
+  SPACING,
+  FONT_SIZES,
+  scaleDimension,
+  scaleFont,
+  getResponsiveDimension
+} from '../utils/dimensions';
 
-const { width, height } = Dimensions.get('window');
 const pixelFont = 'PressStart2P_400Regular';
 
 const pixelStroke = [
@@ -109,107 +119,119 @@ const LoadingScreen = ({ navigation }) => {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#0a0a23' }}>
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* Líneas superiores tipo consola */}
-        <View style={styles.topLines}>
-          {[...Array(6)].map((_, i) => (
-            <View key={i} style={[styles.topLine, { top: i * 4 }]} />
-          ))}
-        </View>
-        {/* Puntos decorativos mejor distribuidos */}
-        <View style={[styles.cornerDot, styles.dotTopLeft]} />
-        <View style={[styles.cornerDot, styles.dotTopRight]} />
-        <View style={[styles.cornerDot, styles.dotBottomLeft]} />
-        <View style={[styles.cornerDot, styles.dotBottomRight]} />
-        <View style={[styles.cornerDotBlue, styles.dotMidLeft]} />
-        <View style={[styles.cornerDotBlue, styles.dotMidRight]} />
-        <View style={[styles.cornerDotBlue, styles.dotBottomLeftBlue]} />
-        <View style={[styles.cornerDotBlue, styles.dotBottomRightBlue]} />
-
-        {/* Logo principal */}
-        <View style={styles.logoWrapper}>
-          <Text style={[styles.logoTri, ...pixelStroke]}>TRI</Text>
-          <Text style={[styles.logoCade, ...pixelStroke]}>CADE</Text>
-        </View>
-
-        {/* Espaciado reducido */}
-        <View style={{ height: height * 0.02 }} />
-
-        {/* Recuadro central con scanlines y moneda */}
-        <View style={styles.centerBoxWrapper}>
-          <View style={styles.centerBoxBorder}>
-            <View style={styles.centerBox}>
-              <RenderScanlines />
-              <Text
-                style={[
-                  styles.centerText,
-                  { color: '#00fff7' },
-                  ...pixelStroke,
-                ]}
-                numberOfLines={2}
-                adjustsFontSizeToFit
-              >
-                Insertando monedas...
-              </Text>
-              <Text style={[styles.centerText, { color: '#ff2e7e', marginTop: 2, lineHeight: getFontSize(CENTER_TEXT_FONT_FACTOR * 1.1) }, ...pixelStroke]}>¡gratis esta vez!</Text>
-            </View>
+    <SafeAreaView style={styles.container}>
+      <View style={{ flex: 1 }}>
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+          {/* Líneas superiores tipo consola */}
+          <View style={styles.topLines}>
+            {[...Array(6)].map((_, i) => (
+              <View key={i} style={[styles.topLine, { top: i * 4 }]} />
+            ))}
           </View>
-        </View>
+          {/* Puntos decorativos mejor distribuidos */}
+          <View style={[styles.cornerDot, styles.dotTopLeft]} />
+          <View style={[styles.cornerDot, styles.dotTopRight]} />
+          <View style={[styles.cornerDot, styles.dotBottomLeft]} />
+          <View style={[styles.cornerDot, styles.dotBottomRight]} />
+          <View style={[styles.cornerDotBlue, styles.dotMidLeft]} />
+          <View style={[styles.cornerDotBlue, styles.dotMidRight]} />
+          <View style={[styles.cornerDotBlue, styles.dotBottomLeftBlue]} />
+          <View style={[styles.cornerDotBlue, styles.dotBottomRightBlue]} />
 
-        {/* Espaciado reducido */}
-        <View style={{ height: height * 0.03 }} />
-
-        {/* Bloque de sistema y barra de progreso */}
-        <View style={styles.systemBlock}>
-          <View style={styles.systemRow}>
-            <View style={styles.sideDot} />
-            <View style={styles.systemMsgWrapper}>
-              <Text style={[styles.systemMsg, styles.systemMsgTwoLines, ...pixelStroke]}>
-                Iniciando sistema{"\n"}Bip Bop...
-              </Text>
-            </View>
-            <View style={styles.sideDot} />
+          {/* Logo principal */}
+          <View style={styles.logoWrapper}>
+            <Text style={[styles.logoTri, ...pixelStroke]}>TRI</Text>
+            <Text style={[styles.logoCade, ...pixelStroke]}>CADE</Text>
           </View>
-          <View style={{ height: height * 0.025 }} />
-          <View style={styles.progressRow}>
-            <View style={styles.sideDot} />
-            <View style={styles.progressBarWrapper}>
-              <View style={styles.progressBarBorder}>
-                <View style={styles.progressBar}>
-                  {[...Array(TOTAL_BARS)].map((_, i) => (
-                    <Animated.View
-                      key={i}
-                      style={[
-                        styles.progressBarItem,
-                        {
-                          backgroundColor: i < progress ? '#00fff7' : 'transparent',
-                          borderColor: '#00fff7',
-                          shadowColor: '#00fff7',
-                          shadowOpacity: progressAnim.interpolate({inputRange: [0,1], outputRange: [0.2, 0.7]}),
-                          shadowRadius: progressAnim.interpolate({inputRange: [0,1], outputRange: [2, 6]}),
-                        },
-                      ]}
-                    />
-                  ))}
-                </View>
+
+          {/* Espaciado reducido */}
+          <View style={{ height: height * 0.02 }} />
+
+          {/* Recuadro central con scanlines y moneda */}
+          <View style={styles.centerBoxWrapper}>
+            <View style={styles.centerBoxBorder}>
+              <View style={styles.centerBox}>
+                <RenderScanlines />
+                <Text
+                  style={[
+                    styles.centerText,
+                    { color: '#00fff7' },
+                    ...pixelStroke,
+                  ]}
+                  numberOfLines={2}
+                  adjustsFontSizeToFit
+                >
+                  Insertando monedas...
+                </Text>
+                <Text style={[styles.centerText, { color: '#ff2e7e', marginTop: 2, lineHeight: getFontSize(CENTER_TEXT_FONT_FACTOR * 1.1) }, ...pixelStroke]}>¡gratis esta vez!</Text>
               </View>
             </View>
-            <View style={styles.sideDot} />
           </View>
-        </View>
-      </ScrollView>
-    </View>
+
+          {/* Espaciado reducido */}
+          <View style={{ height: height * 0.03 }} />
+
+          {/* Bloque de sistema y barra de progreso */}
+          <View style={styles.systemBlock}>
+            <View style={styles.systemRow}>
+              <View style={styles.sideDot} />
+              <View style={styles.systemMsgWrapper}>
+                <Text style={[styles.systemMsg, styles.systemMsgTwoLines, ...pixelStroke]}>
+                  Iniciando sistema{"\n"}Bip Bop...
+                </Text>
+              </View>
+              <View style={styles.sideDot} />
+            </View>
+            <View style={{ height: height * 0.025 }} />
+            <View style={styles.progressRow}>
+              <View style={styles.sideDot} />
+              <View style={styles.progressBarWrapper}>
+                <View style={styles.progressBarBorder}>
+                  <View style={styles.progressBar}>
+                    {[...Array(TOTAL_BARS)].map((_, i) => (
+                      <Animated.View
+                        key={i}
+                        style={[
+                          styles.progressBarItem,
+                          {
+                            backgroundColor: i < progress ? '#00fff7' : 'transparent',
+                            borderColor: '#00fff7',
+                            shadowColor: '#00fff7',
+                            shadowOpacity: progressAnim.interpolate({inputRange: [0,1], outputRange: [0.2, 0.7]}),
+                            shadowRadius: progressAnim.interpolate({inputRange: [0,1], outputRange: [2, 6]}),
+                          },
+                        ]}
+                      />
+                    ))}
+                  </View>
+                </View>
+              </View>
+              <View style={styles.sideDot} />
+            </View>
+          </View>
+        </ScrollView>
+      </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#0a0a23',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: scaleDimension(24),
+  },
   scrollContent: {
     flexGrow: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingBottom: height * 0.04,
     backgroundColor: '#0a0a23',
+    width: '100%',
+    maxWidth: 420,
+    alignSelf: 'center',
   },
   topLines: {
     position: 'absolute',
@@ -301,7 +323,7 @@ const styles = StyleSheet.create({
   centerBoxBorder: {
     borderWidth: 5,
     borderColor: '#00fff7',
-    borderRadius: 22,
+    borderRadius: Math.max(18, width * 0.045),
     padding: 6,
     backgroundColor: '#23233a',
     maxWidth: MAX_CONTAINER_WIDTH,
@@ -309,7 +331,7 @@ const styles = StyleSheet.create({
   centerBox: {
     borderWidth: 4,
     borderColor: '#ff2e7e',
-    borderRadius: 16,
+    borderRadius: Math.max(18, width * 0.045),
     backgroundColor: '#101926',
     paddingVertical: height * 0.025,
     paddingHorizontal: width * 0.04,
@@ -423,6 +445,53 @@ const styles = StyleSheet.create({
     marginBottom: height * 0.008,
     fontSize: getFontSize(0.052),
     textAlign: 'center',
+  },
+  loadingText: {
+    color: '#00fff7',
+    fontFamily: pixelFont,
+    fontSize: scaleFont(24),
+    marginBottom: scaleDimension(24),
+    textAlign: 'center',
+    textShadowColor: '#00fff7',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: scaleDimension(12),
+  },
+  loadingBar: {
+    width: wp(80),
+    height: scaleDimension(20),
+    backgroundColor: '#23233a',
+    borderRadius: scaleDimension(10),
+    overflow: 'hidden',
+    borderWidth: scaleDimension(3),
+    borderColor: '#00fff7',
+  },
+  loadingFill: {
+    height: '100%',
+    backgroundColor: '#00fff7',
+    borderRadius: scaleDimension(10),
+  },
+  pixelDot: {
+    width: scaleDimension(12),
+    height: scaleDimension(12),
+    backgroundColor: '#ff2e7e',
+    borderRadius: scaleDimension(6),
+    position: 'absolute',
+  },
+  cornerDotTL: {
+    top: scaleDimension(18),
+    left: scaleDimension(18),
+  },
+  cornerDotTR: {
+    top: scaleDimension(18),
+    right: scaleDimension(18),
+  },
+  cornerDotBL: {
+    bottom: scaleDimension(18),
+    left: scaleDimension(18),
+  },
+  cornerDotBR: {
+    bottom: scaleDimension(18),
+    right: scaleDimension(18),
   },
 });
 
