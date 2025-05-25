@@ -134,6 +134,9 @@ export default function GamesScreen({ navigation }) {
               if (selectedGame === 'snake') {
                 navigation.navigate('SnakeDetailScreen');
               }
+              if (selectedGame === 'cards') {
+                navigation.navigate('DuosDetailScreen');
+              }
               setSelectedGame(null);
             }, 600);
             return 12;

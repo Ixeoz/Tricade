@@ -15,6 +15,9 @@ import TrikiDetailScreen from '../views/TrikiDetailScreen';
 import TrikiGameScreen from '../views/TrikiGameScreen';
 import SnakeDetailScreen from '../views/SnakeDetailScreen';
 import SnakeGameScreen from '../views/SnakeGameScreen';
+import DuosDetailScreen from '../views/DuosDetailScreen';
+import DuosLoadingScreen from '../views/DuosLoadingScreen';
+import DuosGameScreen from '../views/DuosGameScreen';
 // import GamesScreen from '../views/GamesScreen'; // Puedes crear esta pantalla después
 
 const Stack = createStackNavigator();
@@ -36,6 +39,9 @@ const AppNavigator = ({ user }) => (
           <Stack.Screen name="TrikiGameScreen" component={TrikiGameScreen} />
           <Stack.Screen name="SnakeDetailScreen" component={SnakeDetailScreen} />
           <Stack.Screen name="SnakeGameScreen" component={SnakeGameScreen} />
+          <Stack.Screen name="DuosDetailScreen" component={DuosDetailScreen} />
+          <Stack.Screen name="DuosLoading" component={DuosLoadingScreen} />
+          <Stack.Screen name="DuosGame" component={DuosGameScreen} />
         </>
       ) : (
         <>

@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, SafeAreaView, ActivityIndicator, Modal } from 'react-native';
+import { View, Text, StyleSheet, Image, TouchableOpacity, SafeAreaView, Modal, ActivityIndicator } from 'react-native';
 import { auth, db } from '../firebaseConfig';
 import { doc, getDoc } from 'firebase/firestore';
 import { useFocusEffect } from '@react-navigation/native';
@@ -16,15 +16,13 @@ import {
 } from '../utils/dimensions';
 
 const pixelFont = 'PressStart2P_400Regular';
-const logoSnake = require('../assets/snake.png');
 const trophyIcon = require('../assets/trophy-pink.png');
 
-export default function SnakeDetailScreen({ navigation }) {
+export default function DuosDetailScreen({ navigation }) {
   const [stats, setStats] = useState({
-    bestScore: 0,
-    lastScore: 0,
-    totalGames: 0,
-    totalPixels: 0
+    victorias: 0,
+    derrotas: 0,
+    mejorTiempo: '0:00'
   });
   const [isLoading, setIsLoading] = useState(true);
   const [showHelp, setShowHelp] = useState(false);
@@ -35,14 +33,13 @@ export default function SnakeDetailScreen({ navigation }) {
       const loadStats = async () => {
         if (!auth.currentUser) return;
         try {
-          const statsRef = doc(db, 'users', auth.currentUser.uid, 'snakeStats', 'stats');
+          const statsRef = doc(db, 'users', auth.currentUser.uid, 'duosStats', 'stats');
           const statsDoc = await getDoc(statsRef);
           if (statsDoc.exists() && isActive) {
             setStats({
-              bestScore: statsDoc.data().bestScore || 0,
-              lastScore: statsDoc.data().lastScore || 0,
-              totalGames: statsDoc.data().totalGames || 0,
-              totalPixels: statsDoc.data().totalPixels || 0,
+              victorias: statsDoc.data().victorias || 0,
+              derrotas: statsDoc.data().derrotas || 0,
+              mejorTiempo: statsDoc.data().mejorTiempo || '0:00'
             });
           }
         } catch (error) {
@@ -82,11 +79,11 @@ export default function SnakeDetailScreen({ navigation }) {
       </TouchableOpacity>
 
       <View style={styles.container}>
-        {/* Logo SNAKE con glow y fondo neón */}
+        {/* Logo DUOS con glow y fondo neón */}
         <View style={styles.logoBoxWrapper}>
           <View style={styles.logoBoxGlow} />
           <View style={styles.logoBox}>
-            <Text style={[styles.logoText, styles.pixelStroke]}>SNAKE</Text>
+            <Text style={[styles.logoText, styles.pixelStroke]}>DUOS</Text>
           </View>
         </View>
 
@@ -94,7 +91,7 @@ export default function SnakeDetailScreen({ navigation }) {
         <View style={styles.centerBoxBorder}>
           <View style={styles.centerBox}>
             <Image 
-              source={logoSnake} 
+              source={require('../assets/cards.png')} 
               style={styles.centerImg} 
               resizeMode="contain"
             />
@@ -110,23 +107,18 @@ export default function SnakeDetailScreen({ navigation }) {
           <View style={styles.statsBox}>
             <View style={styles.statRow}>
               <Image source={trophyIcon} style={styles.statIcon} resizeMode="contain" />
-              <Text style={styles.statLabel}>Mejor Puntuación:</Text>
-              <Text style={styles.statValue}>{stats.bestScore}</Text>
+              <Text style={styles.statLabel}>Victorias:</Text>
+              <Text style={styles.statValue}>{stats.victorias}</Text>
             </View>
             <View style={styles.statRow}>
               <Image source={trophyIcon} style={styles.statIcon} resizeMode="contain" />
-              <Text style={styles.statLabel}>Última puntuación</Text>
-              <Text style={styles.statValue}>{stats.lastScore}</Text>
+              <Text style={styles.statLabel}>Derrotas:</Text>
+              <Text style={styles.statValue}>{stats.derrotas}</Text>
             </View>
             <View style={styles.statRow}>
               <Image source={trophyIcon} style={styles.statIcon} resizeMode="contain" />
-              <Text style={styles.statLabel}>Partidas totales:</Text>
-              <Text style={styles.statValue}>{stats.totalGames}</Text>
-            </View>
-            <View style={styles.statRow}>
-              <Image source={trophyIcon} style={styles.statIcon} resizeMode="contain" />
-              <Text style={styles.statLabel}>Total píxeles comidos:</Text>
-              <Text style={styles.statValue}>{stats.totalPixels}</Text>
+              <Text style={styles.statLabel}>Mejor tiempo:</Text>
+              <Text style={styles.statValue}>{stats.mejorTiempo}</Text>
             </View>
           </View>
         )}
@@ -140,7 +132,7 @@ export default function SnakeDetailScreen({ navigation }) {
 
         <TouchableOpacity 
           style={styles.startBtn}
-          onPress={() => navigation.navigate('SnakeGameScreen')}
+          onPress={() => navigation.navigate('DuosLoading')}
         >
           <View style={styles.startBtnContent}>
             <Text style={styles.startBtnText}>¡START!</Text>
@@ -159,26 +151,28 @@ export default function SnakeDetailScreen({ navigation }) {
           <View style={styles.helpBoxBorder}>
             <View style={styles.helpBox}>
               <View style={styles.helpLogoBox}>
-                <Text style={[styles.helpTitle, styles.pixelStroke]}>SNAKE</Text>
+                <Text style={[styles.helpTitle, styles.pixelStroke]}>DUOS</Text>
               </View>
               <Text style={styles.helpVoice}>
-                (Voz de presentador de televisión ochentero)
+                (Voz de androide entrenado en estrategia galáctica)
               </Text>
               <Text style={styles.helpIntro}>
                 <Text style={styles.helpIntroWhite}>
-                  "¡Prepárate para deslizarte a velocidades absurdas en <Text style={styles.helpCyan}>SNAKEX</Text>, la versión vitaminada del clásico que devoró horas de tu infancia!"
+                  "Bienvenido al campo de batalla geométrico más legendario del cosmos: <Text style={styles.helpCyan}>DUOS 3000</Text>.{"\n"}
+                  Dicen que fue creado por sabios del siglo XX con palitos y circuititos...{"\n"}
+                  <Text style={styles.helpPink}>Y aún nadie lo ha dominado completamente.</Text>"
                 </Text>
               </Text>
-              <Text style={styles.helpSectionTitle}>Cómo se juega:</Text>
+              <Text style={styles.helpSectionTitle}>¿Cómo se juega?</Text>
               <View style={styles.helpHowToList}>
-                <Text style={styles.helpHowTo}><Text style={styles.helpCyan}>1.</Text> Eres una serpiente digital. Tranquilo, no muerde. Eres tú quien muerde... píxeles.</Text>
-                <Text style={styles.helpHowTo}><Text style={styles.helpCyan}>2.</Text> Usa los controles para moverte: arriba, abajo, izquierda, derecha.</Text>
-                <Text style={styles.helpHowTo}><Text style={styles.helpCyan}>3.</Text> Come las cápsulas brillantes para crecer. Más grande = más poder... y más caídas estrepitosas.</Text>
-                <Text style={styles.helpHowTo}><Text style={styles.helpCyan}>4.</Text> No choques contigo mismo, con las paredes, o con el ego del jugador anterior.</Text>
+                <Text style={styles.helpHowTo}><Text style={styles.helpCyan}>1.</Text> Eres un cuadrado en busca de su otra mitad.</Text>
+                <Text style={styles.helpHowTo}><Text style={styles.helpCyan}>2.</Text> Muévete por el laberinto usando las flechas.</Text>
+                <Text style={styles.helpHowTo}><Text style={styles.helpCyan}>3.</Text> Encuentra y toca a tu compañero para completar el nivel.</Text>
+                <Text style={styles.helpHowTo}><Text style={styles.helpCyan}>4.</Text> ¡Cuidado! Los muros son mortales y el tiempo es limitado.</Text>
               </View>
-              <Text style={styles.helpSectionTitle}>Tip de la IA:</Text>
+              <Text style={styles.helpSectionTitle}>Tip de la IA</Text>
               <Text style={styles.helpTip}>
-                "Cuanto más larga la serpiente, más alta la tensión. Literalmente. ¿Por qué crees que no tenemos seguro médico para jugadores?"
+                <Text style={styles.helpPink}>¿Quieres un consejo?</Text> La velocidad es importante, pero la precisión es vital. <Text style={styles.helpPink}>No querrás terminar como píxeles en la pared.</Text>
               </Text>
               <TouchableOpacity style={styles.helpBtn} onPress={() => setShowHelp(false)} activeOpacity={0.8}>
                 <Text style={styles.helpBtnText}>¡Listo!</Text>
@@ -350,10 +344,11 @@ const styles = StyleSheet.create({
     minWidth: 120,
     minHeight: 80,
   },
-  centerImg: {
-    width: Math.min(width * 0.22, 80),
-    height: Math.min(width * 0.22, 80),
-    tintColor: '#00fff7',
+  centerText: {
+    color: '#00fff7',
+    fontFamily: pixelFont,
+    fontSize: Math.min(width * 0.2, 72),
+    textAlign: 'center',
   },
   statsBox: {
     width: '92%',
@@ -410,6 +405,35 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.18,
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 0 },
+  },
+  startBtn: {
+    width: '84%',
+    alignSelf: 'center',
+    backgroundColor: '#101926',
+    borderWidth: 4,
+    borderColor: '#00fff7',
+    borderRadius: 16,
+    paddingVertical: height * 0.028,
+    marginTop: height * 0.01,
+    marginBottom: height * 0.04,
+    shadowColor: '#00fff7',
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 0 },
+    zIndex: 1,
+  },
+  startBtnContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 16,
+  },
+  startBtnText: {
+    color: '#00fff7',
+    fontFamily: pixelFont,
+    fontSize: Math.min(width * 0.07, 26),
+    textAlign: 'center',
+    letterSpacing: 2,
   },
   helpOverlay: {
     flex: 1,
@@ -486,6 +510,10 @@ const styles = StyleSheet.create({
     color: '#00fff7',
     fontFamily: pixelFont,
   },
+  helpPink: {
+    color: '#ff2e7e',
+    fontFamily: pixelFont,
+  },
   helpSectionTitle: {
     color: '#ff2e7e',
     fontFamily: pixelFont,
@@ -536,33 +564,9 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     letterSpacing: 2,
   },
-  startBtn: {
-    width: '84%',
-    alignSelf: 'center',
-    backgroundColor: '#101926',
-    borderWidth: 4,
-    borderColor: '#00fff7',
-    borderRadius: 16,
-    paddingVertical: height * 0.028,
-    marginTop: height * 0.01,
-    marginBottom: height * 0.04,
-    shadowColor: '#00fff7',
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 0 },
-    zIndex: 1,
-  },
-  startBtnContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 16,
-  },
-  startBtnText: {
-    color: '#00fff7',
-    fontFamily: pixelFont,
-    fontSize: Math.min(width * 0.07, 26),
-    textAlign: 'center',
-    letterSpacing: 2,
+  centerImg: {
+    width: Math.min(width * 0.22, 80),
+    height: Math.min(width * 0.22, 80),
+    tintColor: '#00fff7'
   },
 }); 
