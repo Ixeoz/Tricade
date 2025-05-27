@@ -64,13 +64,13 @@ const HARD_PAIRS = [
 ];
 
 // Función para actualizar estadísticas en Firestore
-const updateDuosStats = async (isWin, tiempoStr, scoreToAdd = 0) => {
+const updateDuosStats = async (isWin, tiempoStr, scoreToAdd = 0, gameDifficulty) => {
   try {
     if (!auth.currentUser) return;
     const statsRef = doc(db, 'users', auth.currentUser.uid, 'duosStats', 'stats');
     const userDocRef = doc(db, 'users', auth.currentUser.uid);
     const statsDoc = await getDoc(statsRef);
-    let prev = { victorias: 0, derrotas: 0, mejorTiempo: null };
+    let prev = { victorias: 0, derrotas: 0, mejorTiempo: null, difficulty: gameDifficulty };
     if (statsDoc.exists()) {
       prev = statsDoc.data();
     }
@@ -85,7 +85,8 @@ const updateDuosStats = async (isWin, tiempoStr, scoreToAdd = 0) => {
     await setDoc(statsRef, {
       victorias: prev.victorias + (isWin ? 1 : 0),
       derrotas: prev.derrotas + (isWin ? 0 : 1),
-      mejorTiempo: mejorTiempo || tiempoStr
+      mejorTiempo: mejorTiempo || tiempoStr,
+      difficulty: gameDifficulty
     }, { merge: true });
 
     // Si ganó, actualizar nivel y revisar trofeos
@@ -93,9 +94,9 @@ const updateDuosStats = async (isWin, tiempoStr, scoreToAdd = 0) => {
       // Calcular score basado en tiempo y dificultad
       const [mins, secs] = tiempoStr.split(':').map(Number);
       const tiempoTotal = mins * 60 + secs;
-      const tiempoMaximo = difficulty === 'Facil' ? 480 : 240; // 8 min o 4 min
+      const tiempoMaximo = gameDifficulty === 'Facil' ? 480 : 240; // 8 min o 4 min
       const tiempoBonus = Math.floor((tiempoMaximo - tiempoTotal) * 2); // 2 puntos por segundo restante
-      const dificultadBonus = difficulty === 'Facil' ? 100 : 200;
+      const dificultadBonus = gameDifficulty === 'Facil' ? 100 : 200;
       const scoreFinal = scoreToAdd + tiempoBonus + dificultadBonus;
 
       // Actualizar nivel
@@ -108,7 +109,8 @@ const updateDuosStats = async (isWin, tiempoStr, scoreToAdd = 0) => {
         {
           victorias: prev.victorias + 1,
           derrotas: prev.derrotas,
-          mejorTiempo: mejorTiempo
+          mejorTiempo: mejorTiempo,
+          difficulty: gameDifficulty
         }
       );
 
@@ -118,7 +120,7 @@ const updateDuosStats = async (isWin, tiempoStr, scoreToAdd = 0) => {
       }
 
       // Trofeo personalizado: Memorion (gana una partida de Duos en difícil)
-      if (difficulty === 'Dificil') {
+      if (gameDifficulty === 'Dificil') {
         const trophyRef = doc(db, 'users', auth.currentUser.uid, 'trophies', 'memorion');
         await setDoc(trophyRef, {
           unlocked: true,
@@ -202,13 +204,15 @@ async function addDuosWinExp() {
   // Actualizar estadísticas y trofeos
   const statsRef = doc(db, 'users', auth.currentUser.uid, 'duosStats', 'stats');
   const statsDoc = await getDoc(statsRef);
-  let prev = { victorias: 0, derrotas: 0 };
+  let prev = { victorias: 0, derrotas: 0, difficulty: 'Facil', mejorTiempo: null };
   if (statsDoc.exists()) {
     prev = statsDoc.data();
   }
   await setDoc(statsRef, {
     victorias: prev.victorias + 1,
-    derrotas: prev.derrotas
+    derrotas: prev.derrotas,
+    difficulty: prev.difficulty || 'Facil',
+    mejorTiempo: prev.mejorTiempo || null
   }, { merge: true });
 
   // Verificar misiones
@@ -217,7 +221,9 @@ async function addDuosWinExp() {
     'DUOS',
     {
       victorias: prev.victorias + 1,
-      derrotas: prev.derrotas
+      derrotas: prev.derrotas,
+      difficulty: prev.difficulty || 'Facil',
+      mejorTiempo: prev.mejorTiempo || null
     }
   );
 
@@ -352,7 +358,7 @@ export default function DuosGameScreen({ navigation, route }) {
     }
     // Guardar stats y sumar score a nivel
     const tiempoStr = formatTime(timer);
-    updateDuosStats(isWin, tiempoStr, finalScore);
+    updateDuosStats(isWin, tiempoStr, finalScore, difficulty);
   };
 
   const handleBack = () => {

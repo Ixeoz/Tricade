@@ -25,7 +25,7 @@ export default function WaitingVerificationScreen({ route, navigation }) {
         await reload(firebaseUser);
         if (firebaseUser.emailVerified) {
           clearInterval(interval);
-          navigation.replace('Games');
+          navigation.replace('Home');
         }
       } catch (e) {
         // Puedes mostrar un error si quieres

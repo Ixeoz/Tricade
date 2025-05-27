@@ -10,6 +10,7 @@ export const MISSIONS = {
       description: 'Completa una partida de Duos en menos de 2 minutos',
       reward: 50,
       check: (stats) => {
+        if (!stats.mejorTiempo || stats.mejorTiempo === '0:00') return false;
         const [mins, secs] = stats.mejorTiempo.split(':').map(Number);
         return (mins * 60 + secs) <= 120;
       }

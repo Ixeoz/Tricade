@@ -106,13 +106,17 @@ async function addSnakeWinExp() {
   // Actualizar estadísticas y trofeos
   const statsRef = doc(db, 'users', auth.currentUser.uid, 'snakeStats', 'stats');
   const statsDoc = await getDoc(statsRef);
-  let prev = { victorias: 0, derrotas: 0 };
+  let prev = { victorias: 0, derrotas: 0, bestScore: 0, lastScore: 0, totalGames: 0, totalPixels: 0 };
   if (statsDoc.exists()) {
     prev = statsDoc.data();
   }
   await setDoc(statsRef, {
     victorias: prev.victorias + 1,
-    derrotas: prev.derrotas
+    derrotas: prev.derrotas || 0,
+    bestScore: prev.bestScore || 0,
+    lastScore: prev.lastScore || 0,
+    totalGames: prev.totalGames || 0,
+    totalPixels: prev.totalPixels || 0
   }, { merge: true });
 
   // Verificar misiones
@@ -121,7 +125,11 @@ async function addSnakeWinExp() {
     'SNAKE',
     {
       victorias: prev.victorias + 1,
-      derrotas: prev.derrotas
+      derrotas: prev.derrotas || 0,
+      bestScore: prev.bestScore || 0,
+      lastScore: prev.lastScore || 0,
+      totalGames: prev.totalGames || 0,
+      totalPixels: prev.totalPixels || 0
     }
   );
 
@@ -168,7 +176,7 @@ export default function SnakeGameScreen({ navigation }) {
       const statsRef = doc(db, 'users', auth.currentUser.uid, 'snakeStats', 'stats');
       const userDocRef = doc(db, 'users', auth.currentUser.uid);
       const statsDoc = await getDoc(statsRef);
-      let prev = { bestScore: 0, lastScore: 0, totalGames: 0, totalPixels: 0 };
+      let prev = { bestScore: 0, lastScore: 0, totalGames: 0, totalPixels: 0, victorias: 0, derrotas: 0 };
       if (statsDoc.exists()) {
         prev = statsDoc.data();
       }
@@ -177,6 +185,8 @@ export default function SnakeGameScreen({ navigation }) {
         lastScore: score,
         totalGames: (prev.totalGames || 0) + 1,
         totalPixels: (prev.totalPixels || 0) + score,
+        victorias: prev.victorias || 0,
+        derrotas: (prev.derrotas || 0) + 1
       };
       await setDoc(statsRef, newStats, { merge: true });
 
