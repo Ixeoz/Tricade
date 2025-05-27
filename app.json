@@ -1,5 +1,8 @@
 {
   "plugins": [
     "expo-font"
-  ]
+  ],
+  "android": {
+    "package": "com.tricade2025.tricade"
+  }
 }

@@ -45,5 +45,11 @@
     "util": "^0.12.5",
     "vm-browserify": "^1.1.2",
     "webpack": "^5.99.8"
+  },
+  "name": "Tricade",
+  "version": "1.0.0",
+  "scripts": {
+    "android": "expo run:android",
+    "ios": "expo run:ios"
   }
 }
