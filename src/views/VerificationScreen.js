@@ -96,13 +96,11 @@ export default function VerificationScreen({ route, navigation }) {
       };
       await setDoc(doc(db, 'users', userCredential.user.uid), userData);
       setIsEmailSent(true);
-      setTimeout(() => {
-        navigation.replace('WaitingVerification', { 
-          firebaseUser: userCredential.user,
-          username,
-          userId: userCredential.user.uid
-        });
-      }, 1200);
+      navigation.replace('WaitingVerification', { 
+        firebaseUser: userCredential.user,
+        username,
+        userId: userCredential.user.uid
+      });
     } catch (e) {
       setError(e.message || 'Error al verificar email');
     } finally {
