@@ -1,12 +1,12 @@
-import React, { useState, useEffect, createContext, useContext } from 'react';
-import { View, Text, StyleSheet, Image, Dimensions, TouchableOpacity, Modal, TextInput, Pressable, Platform, SafeAreaView, ActivityIndicator, ScrollView } from 'react-native';
+import React, { useState, useEffect, createContext, useContext, useRef } from 'react';
+import { View, Text, StyleSheet, Image, Dimensions, TouchableOpacity, Modal, TextInput, Pressable, Platform, SafeAreaView, ActivityIndicator, ScrollView, Animated } from 'react-native';
 import RetroButton from '../components/RetroButton';
 import userPinkIcon from '../assets/user-pink.png';
 import { auth, db, storage } from '../firebaseConfig';
 import { updateProfile, onAuthStateChanged, signOut } from 'firebase/auth';
 import { ref, uploadBytes, getDownloadURL, getStorage } from 'firebase/storage';
 import * as ImagePicker from 'expo-image-picker';
-import { doc, getDoc, setDoc, increment } from 'firebase/firestore';
+import { doc, getDoc, setDoc, increment, updateDoc } from 'firebase/firestore';
 import editarRosaIcon from '../assets/editar_rosa.png';
 import {
   screenWidth as width,
@@ -19,6 +19,12 @@ import {
   scaleFont,
   getResponsiveDimension
 } from '../utils/dimensions';
+import { Audio } from 'expo-av';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { AudioContext } from '../../App';
+import BottomTabBar from '../components/BottomTabBar';
+import { GAME_SCORES, getExpForLevel, SPECIAL_AVATARS } from '../utils/scoreConfig';
+import { checkAndUpdateMissions } from '../utils/missions';
 
 const pixelFont = 'PressStart2P_400Regular';
 
@@ -38,6 +44,11 @@ const avatarOptions = [
   require('../assets/user-blue.png'),
   require('../assets/user-pink.png'),
 ];
+
+const audioOnIcon = require('../assets/audio-on.png');
+const audioOffIcon = require('../assets/audio-off.png');
+const audioGame = require('../assets/audio-game.mp3');
+const audioPapi = require('../assets/audio-papi.mp3');
 
 // Contexto global para el usuario
 export const UserCacheContext = createContext();
@@ -62,45 +73,82 @@ export default function ProfileScreen({ navigation, isTab }) {
   // Nuevo: usar caché global
   const [userCache, setUserCache] = useState(null);
 
+  const { audioOn, toggleAudio } = useContext(AudioContext);
+
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+
+  const [showAvatarModal, setShowAvatarModal] = useState(false);
+  const audioRef = useRef(null);
+  const audioElementRef = useRef(null); // Para web
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        setCurrentUser(user);
-        let displayName = user.displayName;
-        let userLevel = 0;
-        let userExp = 0;
-        // Si no hay nombre en Auth, intentar obtenerlo desde Firestore
-        const userDoc = await getDoc(doc(db, 'users', user.uid));
-        if (userDoc.exists()) {
-          const data = userDoc.data();
-          displayName = data.displayName || displayName;
-          userLevel = data.level ?? 0;
-          userExp = data.exp ?? 0;
-          // Actualizar Auth con el nombre de Firestore
-          if (displayName && user.displayName !== displayName) {
-            await updateProfile(user, { displayName });
+      try {
+        if (user) {
+          setCurrentUser(user);
+          let displayName = user.displayName;
+          let userLevel = 0;
+          let userExp = 0;
+          // Si no hay nombre en Auth, intentar obtenerlo desde Firestore
+          try {
+            const userDoc = await getDoc(doc(db, 'users', user.uid));
+            if (userDoc.exists()) {
+              const data = userDoc.data();
+              displayName = data.displayName || displayName;
+              userLevel = data.level ?? 0;
+              userExp = data.exp ?? 0;
+              // Nuevo: priorizar avatar especial (string a require)
+              if (data.avatarSpecial) {
+                let specialImg = null;
+                if (data.avatarSpecial === 'hidden.1.jpg') specialImg = require('../assets/hidden.1.jpg');
+                else if (data.avatarSpecial === 'hidden.2.jpg') specialImg = require('../assets/hidden.2.jpg');
+                else if (data.avatarSpecial === 'hidden.3.jpg') specialImg = require('../assets/hidden.3.jpg');
+                if (specialImg) setAvatar(specialImg);
+                else if (user.photoURL) setAvatar({ uri: user.photoURL });
+                else setAvatar(userPinkIcon);
+              } else if (user.photoURL) {
+                setAvatar({ uri: user.photoURL });
+              } else {
+                setAvatar(userPinkIcon);
+              }
+              // Actualizar Auth con el nombre de Firestore
+              if (displayName && user.displayName !== displayName) {
+                await updateProfile(user, { displayName });
+              }
+            }
+          } catch (firestoreError) {
+            console.warn('Error al conectar con Firestore:', firestoreError);
+            // Usar datos locales si Firestore no está disponible
+            if (user.photoURL) {
+              setAvatar({ uri: user.photoURL });
+            } else {
+              setAvatar(userPinkIcon);
+            }
           }
-        }
-        setUsername(displayName || '');
-        setEditName(displayName || '');
-        setLevel(userLevel);
-        setExp(userExp);
-        // Cargar avatar
-        if (user.photoURL) {
-          setAvatar({ uri: user.photoURL });
+          setUsername(displayName || '');
+          setEditName(displayName || '');
+          setLevel(userLevel);
+          setExp(userExp);
+          // Guardar en caché global
+          setUserCache({
+            uid: user.uid,
+            displayName,
+            level: userLevel,
+            exp: userExp,
+            photoURL: user.photoURL || null,
+            avatar: user.photoURL ? { uri: user.photoURL } : userPinkIcon
+          });
         } else {
-          setAvatar(userPinkIcon);
+          if (!isTab) {
+            navigation.replace && navigation.replace('Login');
+          } else {
+            setCurrentUser(null);
+          }
+          setUserCache(null);
         }
-        // Guardar en caché global
-        setUserCache({
-          uid: user.uid,
-          displayName,
-          level: userLevel,
-          exp: userExp,
-          photoURL: user.photoURL || null,
-          avatar: user.photoURL ? { uri: user.photoURL } : userPinkIcon
-        });
-      } else {
+      } catch (error) {
+        console.error('Error en la autenticación:', error);
+        // Manejar el error de manera apropiada
         if (!isTab) {
           navigation.replace && navigation.replace('Login');
         } else {
@@ -110,7 +158,9 @@ export default function ProfileScreen({ navigation, isTab }) {
       }
     });
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribe();
+    };
   }, [navigation, isTab]);
 
   // Detectar pantalla activa por navigation (si navigation.getState existe)
@@ -211,6 +261,73 @@ export default function ProfileScreen({ navigation, isTab }) {
     }
   };
 
+  // Función para cambiar el avatar con animación
+  const changeAvatarWithAnimation = (newAvatar) => {
+    Animated.sequence([
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 500,
+        useNativeDriver: true,
+      }),
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 500,
+        useNativeDriver: true,
+      }),
+    ]).start();
+    setAvatar(newAvatar);
+  };
+
+  // Reproducir audio al abrir el modal de avatar (web y móvil)
+  useEffect(() => {
+    if (showAvatarModal) {
+      if (Platform.OS === 'web') {
+        // Web: usar <audio>
+        if (audioElementRef.current) {
+          audioElementRef.current.currentTime = 0;
+          audioElementRef.current.volume = 0.4;
+          audioElementRef.current.play();
+        }
+      } else {
+        // Móvil: usar expo-av
+        (async () => {
+          if (audioRef.current) {
+            await audioRef.current.unloadAsync();
+          }
+          const { sound } = await Audio.Sound.createAsync(audioPapi);
+          audioRef.current = sound;
+          await sound.setVolumeAsync(0.4);
+          await sound.playAsync();
+        })();
+      }
+    } else {
+      if (Platform.OS === 'web') {
+        if (audioElementRef.current) {
+          audioElementRef.current.pause();
+          audioElementRef.current.currentTime = 0;
+        }
+      } else {
+        if (audioRef.current) {
+          audioRef.current.unloadAsync();
+          audioRef.current = null;
+        }
+      }
+    }
+    return () => {
+      if (Platform.OS === 'web') {
+        if (audioElementRef.current) {
+          audioElementRef.current.pause();
+          audioElementRef.current.currentTime = 0;
+        }
+      } else {
+        if (audioRef.current) {
+          audioRef.current.unloadAsync();
+          audioRef.current = null;
+        }
+      }
+    };
+  }, [showAvatarModal]);
+
   // Si no hay usuario, mostrar pantalla de carga o nada
   if (!currentUser) {
     return (
@@ -226,14 +343,16 @@ export default function ProfileScreen({ navigation, isTab }) {
     <UserCacheContext.Provider value={userCache}>
       <SafeAreaView style={{ flex: 1, backgroundColor: '#0a0a23' }}>
         <View style={styles.root}>
-          <ScrollView contentContainerStyle={{ flexGrow: 1, paddingBottom: 120 }} showsVerticalScrollIndicator={false}>
+          <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: 120 }]} showsVerticalScrollIndicator={false}>
             {/* Título */}
             <Text style={[styles.title, ...pixelStroke]}>PERFIL DE USUARIO</Text>
 
             {/* Avatar */}
-            <View style={styles.avatarBox}>
-              <Image source={avatar} style={styles.avatar} resizeMode="contain" />
-            </View>
+            <TouchableOpacity activeOpacity={0.8} onPress={() => setShowAvatarModal(true)}>
+              <Animated.View style={[styles.avatarBox, { opacity: fadeAnim }]}> 
+                <Image source={avatar} style={styles.avatar} resizeMode="contain" />
+              </Animated.View>
+            </TouchableOpacity>
 
             {/* Nombre de usuario */}
             <View style={styles.usernameBox}>
@@ -256,6 +375,18 @@ export default function ProfileScreen({ navigation, isTab }) {
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
                 <Text style={styles.editBtnText}>Editar perfil</Text>
                 <Image source={editarRosaIcon} style={styles.editIcon} resizeMode="contain" />
+              </View>
+            </TouchableOpacity>
+
+            {/* Botón de audio */}
+            <TouchableOpacity style={styles.editBtn} activeOpacity={0.7} onPress={toggleAudio}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={styles.editBtnText}>{audioOn ? 'Apagar sonido' : 'Encender sonido'}</Text>
+                <Image 
+                  source={audioOn ? audioOnIcon : audioOffIcon} 
+                  style={[styles.editIcon, { tintColor: audioOn ? '#ff2e7e' : '#aaa' }]} 
+                  resizeMode="contain" 
+                />
               </View>
             </TouchableOpacity>
 
@@ -339,30 +470,38 @@ export default function ProfileScreen({ navigation, isTab }) {
                 </View>
               </View>
             </Modal>
-          </ScrollView>
 
+            {/* Modal para ver avatar grande */}
+            <Modal
+              visible={showAvatarModal}
+              transparent
+              animationType="fade"
+              onRequestClose={() => setShowAvatarModal(false)}
+            >
+              <View style={styles.modalOverlay}>
+                <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+                  <Image source={avatar} style={{ width: 220, height: 220, borderRadius: 24, borderWidth: 4, borderColor: '#00fff7', backgroundColor: '#23233a' }} resizeMode="contain" />
+                  {/* Audio para web */}
+                  {Platform.OS === 'web' && (
+                    <audio ref={audioElementRef} src={require('../assets/audio-papi.mp3')} />
+                  )}
+                  <TouchableOpacity onPress={() => setShowAvatarModal(false)} style={{ marginTop: 24, backgroundColor: '#ff2e7e', borderRadius: 12, paddingVertical: 10, paddingHorizontal: 32 }}>
+                    <Text style={{ color: '#fff', fontFamily: pixelFont, fontSize: 16 }}>Cerrar</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </Modal>
+          </ScrollView>
           {/* Menú inferior siempre visible */}
           {(!isTab) && (
-            <View style={styles.bottomTab}>
-              <TouchableOpacity
-                style={[styles.tabBtn, activeTab === 'trophy' && styles.tabBtnActive]}
-                onPress={() => navigation && navigation.navigate && navigation.navigate('Home')}
-              >
-                <Image source={activeTab === 'trophy' ? require('../assets/trophy-pink.png') : require('../assets/trophy-blue.png')} style={styles.tabIcon} resizeMode="contain" />
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.tabBtn, activeTab === 'home' && styles.tabBtnActive]}
-                onPress={() => navigation && navigation.navigate && navigation.navigate('Games')}
-              >
-                <Image source={activeTab === 'home' ? require('../assets/home-pink.png') : require('../assets/home-blue.png')} style={styles.tabIcon} resizeMode="contain" />
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.tabBtn, activeTab === 'user' && styles.tabBtnActive]}
-                onPress={() => navigation && navigation.navigate && navigation.navigate('Profile')}
-              >
-                <Image source={activeTab === 'user' ? require('../assets/user-pink.png') : require('../assets/user-blue.png')} style={styles.tabIcon} resizeMode="contain" />
-              </TouchableOpacity>
-            </View>
+            <BottomTabBar
+              activeTab={activeTab}
+              onTabPress={(tab) => {
+                if (tab === 'trophy') navigation.navigate('Home');
+                if (tab === 'home') navigation.navigate('Games');
+                if (tab === 'user') navigation.navigate('Profile');
+              }}
+            />
           )}
         </View>
       </SafeAreaView>
@@ -372,23 +511,67 @@ export default function ProfileScreen({ navigation, isTab }) {
 
 export async function addTrikiWinExp() {
   if (!auth.currentUser) return;
-  const userRef = doc(db, 'users', auth.currentUser.uid);
-  const userDoc = await getDoc(userRef);
-  let exp = 0, expMax = 600, level = 0;
-  if (userDoc.exists()) {
-    exp = userDoc.data().exp || 0;
-    expMax = userDoc.data().expMax || 600;
-    level = userDoc.data().level || 0;
+  try {
+    const userRef = doc(db, 'users', auth.currentUser.uid);
+    const userDoc = await getDoc(userRef);
+    let exp = 0, level = 0;
+    if (userDoc.exists()) {
+      exp = userDoc.data().exp || 0;
+      level = userDoc.data().level || 0;
+    }
+    // Sumar puntos por victoria en Triki
+    exp += GAME_SCORES.triki;
+    let newLevel = level;
+    let expMax = getExpForLevel(newLevel + 1);
+    // Subir solo un nivel por victoria
+    if (exp >= expMax) {
+      exp -= expMax;
+      newLevel += 1;
+    }
+    // Cambiar avatar si corresponde
+    let updates = { exp, level: newLevel };
+    const special = SPECIAL_AVATARS.find(a => a.level === newLevel);
+    if (special) {
+      updates.photoURL = null;
+      updates.avatarSpecial = special.image; // Store only the filename string
+    }
+    await setDoc(userRef, updates, { merge: true });
+
+    // Actualizar estadísticas y trofeos
+    try {
+      const statsRef = doc(db, 'users', auth.currentUser.uid, 'trikiStats', 'stats');
+      const statsDoc = await getDoc(statsRef);
+      let prev = { victorias: 0, derrotas: 0 };
+      if (statsDoc.exists()) {
+        prev = statsDoc.data();
+      }
+      await setDoc(statsRef, {
+        victorias: prev.victorias + 1,
+        derrotas: prev.derrotas
+      }, { merge: true });
+
+      // Verificar misiones
+      const missionReward = await checkAndUpdateMissions(
+        auth.currentUser.uid,
+        'TRIKI',
+        {
+          victorias: prev.victorias + 1,
+          derrotas: prev.derrotas
+        }
+      );
+
+      // Si hay recompensa por misiones, sumarla al nivel
+      if (missionReward > 0) {
+        await updateDoc(userRef, { level: increment(missionReward) });
+      }
+    } catch (statsError) {
+      console.warn('Error al actualizar estadísticas:', statsError);
+      // Continuar con la ejecución aunque falle la actualización de estadísticas
+    }
+  } catch (error) {
+    console.error('Error al actualizar experiencia:', error);
+    // No propagar el error para no interrumpir el flujo del juego
   }
-  exp += 5;
-  let leveledUp = false;
-  while (exp >= expMax) {
-    exp -= expMax;
-    level += 1;
-    expMax += 100;
-    leveledUp = true;
-  }
-  await setDoc(userRef, { exp, expMax, level }, { merge: true });
 }
 
 const styles = StyleSheet.create({
@@ -398,7 +581,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'flex-start',
     paddingTop: height * 0.04,
-    paddingBottom: height * 0.025,
+    paddingBottom: 0,
     width: '100%',
     alignSelf: 'center',
   },
@@ -682,5 +865,78 @@ const styles = StyleSheet.create({
     height: 28,
     marginLeft: 14,
     marginBottom: -3,
+  },
+  cornerDotTL: {
+    position: 'absolute',
+    top: hp(2.5),
+    left: wp(4),
+    width: scaleDimension(12),
+    height: scaleDimension(12),
+    backgroundColor: '#ff2e7e',
+    borderRadius: scaleDimension(6),
+    zIndex: 2,
+  },
+  cornerDotTR: {
+    position: 'absolute',
+    top: hp(2.5),
+    right: wp(4),
+    width: scaleDimension(12),
+    height: scaleDimension(12),
+    backgroundColor: '#00fff7',
+    borderRadius: scaleDimension(6),
+    zIndex: 2,
+  },
+  cornerDotBL: {
+    position: 'absolute',
+    bottom: hp(2.5),
+    left: wp(4),
+    width: scaleDimension(12),
+    height: scaleDimension(12),
+    backgroundColor: '#00fff7',
+    borderRadius: scaleDimension(6),
+    zIndex: 2,
+  },
+  cornerDotBR: {
+    position: 'absolute',
+    bottom: hp(2.5),
+    right: wp(4),
+    width: scaleDimension(12),
+    height: scaleDimension(12),
+    backgroundColor: '#ff2e7e',
+    borderRadius: scaleDimension(6),
+    zIndex: 2,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingBottom: height * 0.04,
+  },
+  audioContainer: {
+    width: '100%',
+    alignItems: 'center',
+    paddingVertical: 10,
+    backgroundColor: '#0a0a23',
+    borderBottomWidth: 1,
+    borderBottomColor: '#18182e',
+  },
+  audioButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '90%',
+    backgroundColor: '#18182e',
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: '#00fff7',
+    padding: 12,
+  },
+  audioText: {
+    color: '#fff',
+    fontFamily: pixelFont,
+    fontSize: 20,
+  },
+  audioIcon: {
+    width: 32,
+    height: 32,
+    marginLeft: 8,
   },
 }); 

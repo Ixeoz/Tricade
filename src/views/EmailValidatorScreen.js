@@ -311,8 +311,8 @@ const styles = StyleSheet.create({
   },
   cornerDotTL: {
     position: 'absolute',
-    top: scaleDimension(18),
-    left: scaleDimension(18),
+    top: hp(2.5),
+    left: wp(4),
     width: scaleDimension(12),
     height: scaleDimension(12),
     backgroundColor: '#ff2e7e',
@@ -321,8 +321,8 @@ const styles = StyleSheet.create({
   },
   cornerDotTR: {
     position: 'absolute',
-    top: scaleDimension(18),
-    right: scaleDimension(18),
+    top: hp(2.5),
+    right: wp(4),
     width: scaleDimension(12),
     height: scaleDimension(12),
     backgroundColor: '#00fff7',
@@ -331,8 +331,8 @@ const styles = StyleSheet.create({
   },
   cornerDotBL: {
     position: 'absolute',
-    bottom: scaleDimension(18),
-    left: scaleDimension(18),
+    bottom: hp(2.5),
+    left: wp(4),
     width: scaleDimension(12),
     height: scaleDimension(12),
     backgroundColor: '#00fff7',
@@ -341,8 +341,8 @@ const styles = StyleSheet.create({
   },
   cornerDotBR: {
     position: 'absolute',
-    bottom: scaleDimension(18),
-    right: scaleDimension(18),
+    bottom: hp(2.5),
+    right: wp(4),
     width: scaleDimension(12),
     height: scaleDimension(12),
     backgroundColor: '#ff2e7e',

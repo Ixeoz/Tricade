@@ -15,6 +15,7 @@ import {
   scaleFont,
   getResponsiveDimension
 } from '../utils/dimensions';
+import { checkAndUpdateMissions } from '../utils/missions';
 
 const pixelFont = 'PressStart2P_400Regular';
 
@@ -53,7 +54,7 @@ export default function TrikiGameScreen({ navigation }) {
 
   // Simple AI: pick first empty
   useEffect(() => {
-    if (turn === 'O' && !gameOver) {
+    if (turn === 'O' && !gameOver && !paused) {
       const empty = [];
       board.forEach((row, i) => row.forEach((cell, j) => { if (!cell) empty.push([i, j]); }));
       if (empty.length > 0) {
@@ -63,7 +64,7 @@ export default function TrikiGameScreen({ navigation }) {
         }, 600);
       }
     }
-  }, [turn, board, gameOver]);
+  }, [turn, board, gameOver, paused]);
 
   async function updateStats(result) {
     if (!auth.currentUser) return;
@@ -83,10 +84,21 @@ export default function TrikiGameScreen({ navigation }) {
       await setDoc(statsRef, {
         [result]: increment(1)
       }, { merge: true });
+
+      // Obtener estadísticas actualizadas
+      const updatedStatsDoc = await getDoc(statsRef);
+      const currentStats = updatedStatsDoc.data();
+
+      // Verificar misiones
+      const missionReward = await checkAndUpdateMissions(
+        auth.currentUser.uid,
+        'TRIKI',
+        currentStats
+      );
+
       // Si es victoria, revisar para subir nivel y trofeo progresivo
       if (result === 'victorias') {
-        const updatedDoc = await getDoc(statsRef);
-        const victorias = updatedDoc.exists() ? updatedDoc.data().victorias || 0 : 0;
+        const victorias = currentStats.victorias || 0;
         // Cada 5 victorias, sube 2 niveles
         if (victorias > 0 && victorias % 5 === 0) {
           await setDoc(userDocRef, { level: increment(2) }, { merge: true });
@@ -98,6 +110,11 @@ export default function TrikiGameScreen({ navigation }) {
           await setDoc(trophyRef, { unlocked: true, date: new Date().toISOString(), count: victorias });
           await setDoc(userDocRef, { level: increment(10) }, { merge: true });
         }
+      }
+
+      // Si hay recompensa por misiones, sumarla al nivel
+      if (missionReward > 0) {
+        await setDoc(userDocRef, { level: increment(missionReward) }, { merge: true });
       }
     } catch (error) {
       console.error('Error updating stats:', error);
@@ -128,7 +145,7 @@ export default function TrikiGameScreen({ navigation }) {
   }
 
   function makeMove(i, j) {
-    if (board[i][j] || gameOver) return;
+    if (board[i][j] || gameOver || paused) return;
     
     const newBoard = board.map(row => [...row]);
     newBoard[i][j] = turn;
@@ -169,12 +186,12 @@ export default function TrikiGameScreen({ navigation }) {
         {/* Top bar mejorada */}
         <View style={styles.topBar}>
           {/* Botón de volver */}
-          <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.topBtn, styles.topBtnGlow]}>
-            <Text style={[styles.topTextIcon, { color: '#00fff7', textShadowColor: '#00fff7', textShadowRadius: 8, textShadowOffset: { width: 0, height: 0 } }]}>←</Text>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.topBtn}>
+            <Text style={styles.topTextIcon}>{'<'}</Text>
           </TouchableOpacity>
           {/* Botón de pausa */}
-          <TouchableOpacity onPress={() => setPaused(true)} style={[styles.topBtn, styles.topBtnGlow]}>
-            <Text style={[styles.topTextIcon, { color: '#00fff7', textShadowColor: '#00fff7', textShadowRadius: 8, textShadowOffset: { width: 0, height: 0 } }]}>∥</Text>
+          <TouchableOpacity onPress={() => setPaused(!paused)} style={[styles.topBtn, styles.topBtnGlow]}>
+            <Text style={[styles.topTextIcon, { color: '#00fff7', textShadowColor: '#00fff7', textShadowRadius: 8, textShadowOffset: { width: 0, height: 0 } }]}>{paused ? '>' : '∥'}</Text>
           </TouchableOpacity>
           {/* Botón de salir */}
           <TouchableOpacity onPress={() => setShowExitConfirm(true)} style={[styles.topBtn, styles.topBtnGlow]}>
@@ -200,8 +217,8 @@ export default function TrikiGameScreen({ navigation }) {
                   <TouchableOpacity
                     key={j}
                     style={styles.cell}
-                    activeOpacity={cell || gameOver || turn === 'O' ? 1 : 0.7}
-                    onPress={() => turn === 'X' && !cell && !gameOver ? makeMove(i, j) : null}
+                    activeOpacity={cell || gameOver || turn === 'O' || paused ? 1 : 0.7}
+                    onPress={() => turn === 'X' && !cell && !gameOver && !paused ? makeMove(i, j) : null}
                   >
                     {cell === 'X' && <Image source={equisTriki} style={styles.cellIcon} resizeMode="contain" />}
                     {cell === 'O' && <Image source={circleTriki} style={styles.cellIcon} resizeMode="contain" />}
@@ -221,25 +238,6 @@ export default function TrikiGameScreen({ navigation }) {
         <View style={styles.timerBox}>
           <Text style={styles.timerText}>{formatTime(timer)}</Text>
         </View>
-        {/* Modal de pausa */}
-        <Modal
-          visible={paused}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setPaused(false)}
-        >
-          <View style={styles.pauseOverlay}>
-            <View style={styles.pauseBoxBorder}>
-              <View style={styles.pauseBox}>
-                <Text style={styles.pauseTitle}>Juego pausado</Text>
-                <Text style={styles.pauseMsg}>¿Sigues ahí?</Text>
-                <TouchableOpacity style={styles.pauseBtn} onPress={() => setPaused(false)}>
-                  <Text style={styles.pauseBtnText}>Continuar</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        </Modal>
         {/* Modal de confirmación de salida */}
         <Modal
           visible={showExitConfirm}
@@ -349,20 +347,23 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   topBtn: {
-    backgroundColor: '#18182e',
-    borderWidth: 3,
-    borderColor: '#00fff7',
-    borderRadius: Math.max(18, width * 0.045),
-    padding: 4,
-    width: 40,
-    height: 40,
+    backgroundColor: '#3a2172',
+    borderWidth: 2,
+    borderColor: '#ff2e7e',
+    borderRadius: 8,
+    width: 36,
+    height: 36,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#ff2e7e',
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 0 },
   },
   topBtnGlow: {
-    shadowColor: '#00fff7',
-    shadowOpacity: 0.18,
-    shadowRadius: 18,
+    shadowColor: '#ff2e7e',
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
     shadowOffset: { width: 0, height: 0 },
   },
   topIcon: {
@@ -371,11 +372,11 @@ const styles = StyleSheet.create({
   },
   topTextIcon: {
     fontFamily: pixelFont,
-    fontSize: Math.min(width * 0.06, 28),
+    fontSize: Math.min(width * 0.06, 22),
     textAlign: 'center',
-    textShadowColor: '#18182e',
-    textShadowOffset: { width: 2, height: 2 },
-    textShadowRadius: 1,
+    marginLeft: 2,
+    marginTop: -2,
+    color: '#ff2e7e',
   },
   turnBox: {
     backgroundColor: '#23233a',

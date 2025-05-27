@@ -15,14 +15,14 @@ import {
 const pixelFont = 'PressStart2P_400Regular';
 
 const pixelStroke = [
-  { textShadowOffset: { width: -4, height: 0 }, textShadowColor: '#000', textShadowRadius: 0 },
-  { textShadowOffset: { width: 4, height: 0 }, textShadowColor: '#000', textShadowRadius: 0 },
-  { textShadowOffset: { width: 0, height: -4 }, textShadowColor: '#000', textShadowRadius: 0 },
-  { textShadowOffset: { width: 0, height: 4 }, textShadowColor: '#000', textShadowRadius: 0 },
-  { textShadowOffset: { width: -4, height: -4 }, textShadowColor: '#000', textShadowRadius: 0 },
-  { textShadowOffset: { width: 4, height: -4 }, textShadowColor: '#000', textShadowRadius: 0 },
-  { textShadowOffset: { width: -4, height: 4 }, textShadowColor: '#000', textShadowRadius: 0 },
-  { textShadowOffset: { width: 4, height: 4 }, textShadowColor: '#000', textShadowRadius: 0 },
+  { textShadow: '-4px 0px 0px #000' },
+  { textShadow: '4px 0px 0px #000' },
+  { textShadow: '0px -4px 0px #000' },
+  { textShadow: '0px 4px 0px #000' },
+  { textShadow: '-4px -4px 0px #000' },
+  { textShadow: '4px -4px 0px #000' },
+  { textShadow: '-4px 4px 0px #000' },
+  { textShadow: '4px 4px 0px #000' },
 ];
 
 const TOTAL_BARS = 14;

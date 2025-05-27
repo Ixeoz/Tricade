@@ -164,7 +164,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     alignItems: 'center',
     justifyContent: 'flex-start',
-    paddingBottom: hp(4),
+    paddingBottom: height * 0.04,
   },
   topLines: {
     position: 'absolute',

@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Alert, Animated } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Alert, Animated, Modal } from 'react-native';
 import { auth, db } from '../firebaseConfig';
-import { doc, getDoc, setDoc, increment } from 'firebase/firestore';
+import { doc, getDoc, setDoc, increment, updateDoc } from 'firebase/firestore';
 import {
   screenWidth as width,
   screenHeight as height,
@@ -13,6 +13,8 @@ import {
   scaleFont,
   getResponsiveDimension
 } from '../utils/dimensions';
+import { checkAndUpdateMissions } from '../utils/missions';
+import { GAME_SCORES, getExpForLevel, SPECIAL_AVATARS } from '../utils/scoreConfig';
 
 const pixelFont = 'PressStart2P_400Regular';
 const BOARD_SIZE = 20;
@@ -58,6 +60,77 @@ const OPPOSITE_DIRECTIONS = {
   right: 'left',
 };
 
+// Función para cambiar el avatar con animación
+const changeAvatarWithAnimation = (newAvatar) => {
+  Animated.sequence([
+    Animated.timing(fadeAnim, {
+      toValue: 0,
+      duration: 500,
+      useNativeDriver: true,
+    }),
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 500,
+      useNativeDriver: true,
+    }),
+  ]).start();
+  setAvatar(newAvatar);
+};
+
+// Sumar experiencia y nivel al terminar una partida de Snake
+async function addSnakeWinExp() {
+  if (!auth.currentUser) return;
+  const userRef = doc(db, 'users', auth.currentUser.uid);
+  const userDoc = await getDoc(userRef);
+  let exp = 0, level = 0;
+  if (userDoc.exists()) {
+    exp = userDoc.data().exp || 0;
+    level = userDoc.data().level || 0;
+  }
+  exp += GAME_SCORES.snake;
+  let newLevel = level;
+  let expMax = getExpForLevel(newLevel + 1);
+  // Subir solo un nivel por victoria
+  if (exp >= expMax) {
+    exp -= expMax;
+    newLevel += 1;
+  }
+  let updates = { exp, level: newLevel };
+  const special = SPECIAL_AVATARS.find(a => a.level === newLevel);
+  if (special) {
+    updates.photoURL = null;
+    updates.avatarSpecial = special.image; // Store only the filename string
+  }
+  await setDoc(userRef, updates, { merge: true });
+
+  // Actualizar estadísticas y trofeos
+  const statsRef = doc(db, 'users', auth.currentUser.uid, 'snakeStats', 'stats');
+  const statsDoc = await getDoc(statsRef);
+  let prev = { victorias: 0, derrotas: 0 };
+  if (statsDoc.exists()) {
+    prev = statsDoc.data();
+  }
+  await setDoc(statsRef, {
+    victorias: prev.victorias + 1,
+    derrotas: prev.derrotas
+  }, { merge: true });
+
+  // Verificar misiones
+  const missionReward = await checkAndUpdateMissions(
+    auth.currentUser.uid,
+    'SNAKE',
+    {
+      victorias: prev.victorias + 1,
+      derrotas: prev.derrotas
+    }
+  );
+
+  // Si hay recompensa por misiones, sumarla al nivel
+  if (missionReward > 0) {
+    await updateDoc(userRef, { level: increment(missionReward) });
+  }
+}
+
 export default function SnakeGameScreen({ navigation }) {
   const [snake, setSnake] = useState([...INIT_SNAKE]);
   const [direction, setDirection] = useState(INIT_DIRECTION);
@@ -73,7 +146,7 @@ export default function SnakeGameScreen({ navigation }) {
   const gameLoopRef = useRef(null);
   const lastDirectionRef = useRef(INIT_DIRECTION);
   const pulseAnim = useRef(new Animated.Value(1)).current;
-  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const fadeAnim = useRef(new Animated.Value(1)).current;
   const shakeAnim = useRef(new Animated.Value(0)).current;
 
   const resetGame = () => {
@@ -85,7 +158,7 @@ export default function SnakeGameScreen({ navigation }) {
     setFoodsEaten(0);
     setGameOver(false);
     setIsPaused(false);
-    fadeAnim.setValue(0);
+    fadeAnim.setValue(1);
     shakeAnim.setValue(0);
   };
 
@@ -93,6 +166,7 @@ export default function SnakeGameScreen({ navigation }) {
     try {
       if (!auth.currentUser) return;
       const statsRef = doc(db, 'users', auth.currentUser.uid, 'snakeStats', 'stats');
+      const userDocRef = doc(db, 'users', auth.currentUser.uid);
       const statsDoc = await getDoc(statsRef);
       let prev = { bestScore: 0, lastScore: 0, totalGames: 0, totalPixels: 0 };
       if (statsDoc.exists()) {
@@ -105,6 +179,21 @@ export default function SnakeGameScreen({ navigation }) {
         totalPixels: (prev.totalPixels || 0) + score,
       };
       await setDoc(statsRef, newStats, { merge: true });
+
+      // Verificar misiones
+      const missionReward = await checkAndUpdateMissions(
+        auth.currentUser.uid,
+        'SNAKE',
+        newStats
+      );
+
+      // Si hay recompensa por misiones, sumarla al nivel
+      if (missionReward > 0) {
+        await updateDoc(userDocRef, { level: increment(missionReward) });
+      }
+
+      // Sumar experiencia y nivel al terminar una partida de Snake
+      await addSnakeWinExp();
     } catch (e) {
       console.error('Error updating snake stats:', e);
     }
@@ -350,7 +439,7 @@ export default function SnakeGameScreen({ navigation }) {
       {/* Back Button */}
       <TouchableOpacity style={styles.backButton} onPress={handleBack}>
         <View style={styles.backBox}>
-          <Text style={styles.backText}>←</Text>
+          <Text style={styles.backText}>{'<'}</Text>
         </View>
       </TouchableOpacity>
 
@@ -389,7 +478,10 @@ export default function SnakeGameScreen({ navigation }) {
                   }
                 ]}
               >
-                <Text style={styles.gameOverText}>GAME OVER</Text>
+                <View style={styles.gameOverBox}>
+                  <Text style={[styles.gameOverText, ...pixelStroke]}>GAME</Text>
+                  <Text style={[styles.gameOverText, ...pixelStroke]}>OVER</Text>
+                </View>
               </Animated.View>
             )}
           </View>
@@ -473,42 +565,42 @@ const styles = StyleSheet.create({
   },
   cornerDotTL: {
     position: 'absolute',
-    top: 18,
-    left: 18,
-    width: 12,
-    height: 12,
+    top: hp(2.5),
+    left: wp(4),
+    width: scaleDimension(12),
+    height: scaleDimension(12),
     backgroundColor: '#ff2e7e',
-    borderRadius: 6,
+    borderRadius: scaleDimension(6),
     zIndex: 2,
   },
   cornerDotTR: {
     position: 'absolute',
-    top: 18,
-    right: 18,
-    width: 12,
-    height: 12,
+    top: hp(2.5),
+    right: wp(4),
+    width: scaleDimension(12),
+    height: scaleDimension(12),
     backgroundColor: '#00fff7',
-    borderRadius: 6,
+    borderRadius: scaleDimension(6),
     zIndex: 2,
   },
   cornerDotBL: {
     position: 'absolute',
-    bottom: 18,
-    left: 18,
-    width: 12,
-    height: 12,
+    bottom: hp(2.5),
+    left: wp(4),
+    width: scaleDimension(12),
+    height: scaleDimension(12),
     backgroundColor: '#00fff7',
-    borderRadius: 6,
+    borderRadius: scaleDimension(6),
     zIndex: 2,
   },
   cornerDotBR: {
     position: 'absolute',
-    bottom: 18,
-    right: 18,
-    width: 12,
-    height: 12,
+    bottom: hp(2.5),
+    right: wp(4),
+    width: scaleDimension(12),
+    height: scaleDimension(12),
     backgroundColor: '#ff2e7e',
-    borderRadius: 6,
+    borderRadius: scaleDimension(6),
     zIndex: 2,
   },
   header: {
@@ -726,7 +818,7 @@ const styles = StyleSheet.create({
   backText: {
     color: '#ff2e7e',
     fontFamily: pixelFont,
-    fontSize: scaleFont(22),
+    fontSize: Math.min(width * 0.06, 22),
     marginLeft: 2,
     marginTop: -2,
   },
@@ -736,16 +828,30 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    backgroundColor: 'rgba(0, 0, 0, 0.85)',
     justifyContent: 'center',
     alignItems: 'center',
+    borderRadius: getResponsiveDimension(16),
+  },
+  gameOverBox: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 6,
+    borderColor: '#00fff7',
+    borderRadius: 20,
+    backgroundColor: '#0a0a23',
+    padding: SPACING.xl,
+    width: '80%',
+    shadowColor: '#00fff7',
+    shadowOpacity: 0.5,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 0 },
   },
   gameOverText: {
     color: '#ff2e7e',
-    fontSize: scaleFont(40),
+    fontSize: scaleFont(36),
     fontFamily: pixelFont,
-    textShadowColor: '#00fff7',
-    textShadowOffset: { width: 2, height: 2 },
-    textShadowRadius: 5,
+    letterSpacing: 2,
+    marginVertical: 2,
   },
 }); 

@@ -32,7 +32,7 @@ const getFontSize = (factor) => Math.max(14, Math.min(32, width * factor));
 const CENTER_TEXT_FONT_FACTOR = 0.052;
 
 export default function DuosLoadingScreen({ navigation, route }) {
-  const { difficulty } = route.params;
+  const difficulty = route.params?.difficulty || 'Facil';
   const [progress, setProgress] = React.useState(0);
   const progressAnim = useRef(new Animated.Value(0)).current;
   const blinkAnim = useRef(new Animated.Value(1)).current;

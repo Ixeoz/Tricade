@@ -70,91 +70,91 @@ export default function RegisterScreen({ navigation }) {
         <View style={styles.cornerDotTR} />
         <View style={styles.cornerDotBL} />
         <View style={styles.cornerDotBR} />
-        <ScrollView
-          contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', alignItems: 'center', minHeight: height }}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-          style={{ flex: 1 }}
-        >
+          <ScrollView
+            contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', alignItems: 'center', minHeight: height }}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+            style={{ flex: 1 }}
+          >
           <View style={styles.container}>
-            <Text style={[styles.title, styles.titleGlow, ...pixelStroke]}>Registro</Text>
-            <View style={styles.msgBoxBorder}>
-              <View style={styles.msgBox}>
-                <Text style={styles.msgText}>
-                  <Text style={styles.msgTextRed}>
-                    "Estás a punto de unirte a la élite interdimensional de jugadores con dedos veloces y memoria selectiva. "
+              <Text style={[styles.title, styles.titleGlow, ...pixelStroke]}>Registro</Text>
+              <View style={styles.msgBoxBorder}>
+                <View style={styles.msgBox}>
+                  <Text style={styles.msgText}>
+                    <Text style={styles.msgTextRed}>
+                      "Estás a punto de unirte a la élite interdimensional de jugadores con dedos veloces y memoria selectiva. "
+                    </Text>
+                    <Text style={styles.msgTextGreen}>
+                      Regístrate. El universo necesita otro héroe... o al menos alguien que no cierre la app a los 30 segundos."
+                    </Text>
                   </Text>
-                  <Text style={styles.msgTextGreen}>
-                    Regístrate. El universo necesita otro héroe... o al menos alguien que no cierre la app a los 30 segundos."
-                  </Text>
-                </Text>
+                </View>
               </View>
-            </View>
-            <View style={[styles.inputBox, focusInput === 'user' && styles.inputBoxGlow]}> 
-              <TextInput
-                style={styles.input}
-                value={username}
-                onChangeText={t => { setUsername(t); setError(''); }}
-                placeholder="Usuario"
-                placeholderTextColor="#00fff7"
-                maxLength={32}
-                autoCapitalize="none"
-                onFocus={() => setFocusInput('user')}
-                onBlur={() => setFocusInput('')}
+              <View style={[styles.inputBox, focusInput === 'user' && styles.inputBoxGlow]}> 
+                <TextInput
+                  style={styles.input}
+                  value={username}
+                  onChangeText={t => { setUsername(t); setError(''); }}
+                  placeholder="Usuario"
+                  placeholderTextColor="#00fff7"
+                  maxLength={32}
+                  autoCapitalize="none"
+                  onFocus={() => setFocusInput('user')}
+                  onBlur={() => setFocusInput('')}
+                />
+              </View>
+              <View style={[styles.inputBox, focusInput === 'pass1' && styles.inputBoxGlow]}> 
+                <TextInput
+                  style={styles.input}
+                  value={password}
+                  onChangeText={t => { setPassword(t); setError(''); }}
+                  placeholder="Contraseña"
+                  placeholderTextColor="#ff2e7e"
+                  secureTextEntry
+                  maxLength={32}
+                  onFocus={() => setFocusInput('pass1')}
+                  onBlur={() => setFocusInput('')}
+                />
+              </View>
+              <View style={[
+                styles.inputBox,
+                focusInput === 'pass2' && styles.inputBoxGlow,
+                error === 'Las contraseñas no coinciden' && styles.inputBoxError
+              ]}> 
+                <TextInput
+                  style={styles.input}
+                  value={password2}
+                  onChangeText={t => { setPassword2(t); setError(''); }}
+                  placeholder="Confirmar"
+                  placeholderTextColor="#ff2e7e"
+                  secureTextEntry
+                  maxLength={32}
+                  onFocus={() => setFocusInput('pass2')}
+                  onBlur={() => setFocusInput('')}
+                />
+              </View>
+              <View style={styles.pixelBarSeparator}>
+                {Array.from({ length: 18 }).map((_, i) => (
+                  <View key={i} style={[styles.pixelBarChunk, i % 2 === 0 ? styles.pixelBarChunkBlue : styles.pixelBarChunkPink]} />
+                ))}
+              </View>
+              {error ? <Text style={styles.errorMsg}>{error}</Text> : null}
+              <RetroButton
+                title="Crear cuenta"
+                onPress={handleRegister}
+                style={[styles.glowBtn, username.trim() && password.trim() && password2.trim() ? undefined : styles.disabledBtn]}
+                disabled={!username.trim() || !password.trim() || !password2.trim()}
               />
+              <Pressable
+                style={({ pressed }) => [styles.loginBtn, loginPressed || pressed ? styles.loginBtnActive : null]}
+                onPressIn={() => setLoginPressed(true)}
+                onPressOut={() => setLoginPressed(false)}
+                onPress={() => navigation.replace('Login')}
+              >
+                <Text style={styles.loginBtnText}>Ya tengo cuenta</Text>
+              </Pressable>
             </View>
-            <View style={[styles.inputBox, focusInput === 'pass1' && styles.inputBoxGlow]}> 
-              <TextInput
-                style={styles.input}
-                value={password}
-                onChangeText={t => { setPassword(t); setError(''); }}
-                placeholder="Contraseña"
-                placeholderTextColor="#ff2e7e"
-                secureTextEntry
-                maxLength={32}
-                onFocus={() => setFocusInput('pass1')}
-                onBlur={() => setFocusInput('')}
-              />
-            </View>
-            <View style={[
-              styles.inputBox,
-              focusInput === 'pass2' && styles.inputBoxGlow,
-              error === 'Las contraseñas no coinciden' && styles.inputBoxError
-            ]}> 
-              <TextInput
-                style={styles.input}
-                value={password2}
-                onChangeText={t => { setPassword2(t); setError(''); }}
-                placeholder="Confirmar"
-                placeholderTextColor="#ff2e7e"
-                secureTextEntry
-                maxLength={32}
-                onFocus={() => setFocusInput('pass2')}
-                onBlur={() => setFocusInput('')}
-              />
-            </View>
-            <View style={styles.pixelBarSeparator}>
-              {Array.from({ length: 18 }).map((_, i) => (
-                <View key={i} style={[styles.pixelBarChunk, i % 2 === 0 ? styles.pixelBarChunkBlue : styles.pixelBarChunkPink]} />
-              ))}
-            </View>
-            {error ? <Text style={styles.errorMsg}>{error}</Text> : null}
-            <RetroButton
-              title="Crear cuenta"
-              onPress={handleRegister}
-              style={[styles.glowBtn, username.trim() && password.trim() && password2.trim() ? undefined : styles.disabledBtn]}
-              disabled={!username.trim() || !password.trim() || !password2.trim()}
-            />
-            <Pressable
-              style={({ pressed }) => [styles.loginBtn, loginPressed || pressed ? styles.loginBtnActive : null]}
-              onPressIn={() => setLoginPressed(true)}
-              onPressOut={() => setLoginPressed(false)}
-              onPress={() => navigation.replace('Login')}
-            >
-              <Text style={styles.loginBtnText}>Ya tengo cuenta</Text>
-            </Pressable>
-          </View>
-        </ScrollView>
+          </ScrollView>
       </View>
     </SafeAreaView>
   );
@@ -311,8 +311,8 @@ const styles = StyleSheet.create({
   },
   cornerDotTL: {
     position: 'absolute',
-    top: scaleDimension(18),
-    left: scaleDimension(18),
+    top: hp(2.5),
+    left: wp(4),
     width: scaleDimension(12),
     height: scaleDimension(12),
     backgroundColor: '#ff2e7e',
@@ -321,8 +321,8 @@ const styles = StyleSheet.create({
   },
   cornerDotTR: {
     position: 'absolute',
-    top: scaleDimension(18),
-    right: scaleDimension(18),
+    top: hp(2.5),
+    right: wp(4),
     width: scaleDimension(12),
     height: scaleDimension(12),
     backgroundColor: '#00fff7',
@@ -331,8 +331,8 @@ const styles = StyleSheet.create({
   },
   cornerDotBL: {
     position: 'absolute',
-    bottom: scaleDimension(18),
-    left: scaleDimension(18),
+    bottom: hp(2.5),
+    left: wp(4),
     width: scaleDimension(12),
     height: scaleDimension(12),
     backgroundColor: '#00fff7',
@@ -341,8 +341,8 @@ const styles = StyleSheet.create({
   },
   cornerDotBR: {
     position: 'absolute',
-    bottom: scaleDimension(18),
-    right: scaleDimension(18),
+    bottom: hp(2.5),
+    right: wp(4),
     width: scaleDimension(12),
     height: scaleDimension(12),
     backgroundColor: '#ff2e7e',

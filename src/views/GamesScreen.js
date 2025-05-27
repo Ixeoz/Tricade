@@ -5,6 +5,9 @@ import trophyGray from '../assets/trophy-gray.png';
 import ProfileScreen from './ProfileScreen';
 import { auth, db } from '../firebaseConfig';
 import { doc, getDoc, getDocs, collection } from 'firebase/firestore';
+import { scaleDimension, wp, hp } from '../utils/dimensions';
+import { MISSIONS } from '../utils/missions';
+import BottomTabBar from '../components/BottomTabBar';
 
 const { width, height } = Dimensions.get('window');
 const pixelFont = 'PressStart2P_400Regular';
@@ -83,6 +86,8 @@ export default function GamesScreen({ navigation }) {
   const [trikiVictorias, setTrikiVictorias] = useState(0);
   const [trophiesUnlocked, setTrophiesUnlocked] = useState(0);
   const [trophiesTotal, setTrophiesTotal] = useState(0);
+  const [missionsProgress, setMissionsProgress] = useState({});
+  const [missionsLoaded, setMissionsLoaded] = useState(false);
 
   const handleIconPressIn = () => {
     Animated.spring(bounceAnim, {
@@ -156,45 +161,45 @@ export default function GamesScreen({ navigation }) {
           return;
         }
         
-        // Leer victorias
+      // Leer victorias
         let victorias = 0;
-        const statsRef = doc(db, 'users', auth.currentUser.uid, 'trikiStats', 'stats');
+      const statsRef = doc(db, 'users', auth.currentUser.uid, 'trikiStats', 'stats');
         try {
-          const statsDoc = await getDoc(statsRef);
+      const statsDoc = await getDoc(statsRef);
           victorias = statsDoc.exists() ? statsDoc.data().victorias || 0 : 0;
-          setTrikiVictorias(victorias);
+      setTrikiVictorias(victorias);
         } catch (error) {
           console.error('Error al leer stats:', error);
         }
 
-        // Trofeos progresivos cada 50
+      // Trofeos progresivos cada 50
         const maxTrophy = Math.max(50, Math.ceil(victorias / 50) * 50, 200);
-        const trophySteps = [];
-        for (let i = 50; i <= maxTrophy; i += 50) {
-          trophySteps.push(i);
-        }
+      const trophySteps = [];
+      for (let i = 50; i <= maxTrophy; i += 50) {
+        trophySteps.push(i);
+      }
         setTrophiesTotal(trophySteps.length + 3);
 
-        // Leer trofeos desbloqueados
+      // Leer trofeos desbloqueados
         try {
-          const trophiesCol = collection(db, 'users', auth.currentUser.uid, 'trophies');
-          const trophiesSnap = await getDocs(trophiesCol);
-          const unlocked = {};
-          trophiesSnap.forEach(doc => { unlocked[doc.id] = doc.data(); });
+      const trophiesCol = collection(db, 'users', auth.currentUser.uid, 'trophies');
+      const trophiesSnap = await getDocs(trophiesCol);
+      const unlocked = {};
+      trophiesSnap.forEach(doc => { unlocked[doc.id] = doc.data(); });
           
-          setTrikiTrophies(trophySteps.map(step => ({
-            id: `triki${step}`,
-            step,
-            unlocked: !!unlocked[`triki${step}`],
-          })));
+      setTrikiTrophies(trophySteps.map(step => ({
+        id: `triki${step}`,
+        step,
+        unlocked: !!unlocked[`triki${step}`],
+      })));
 
-          // Calcular cuántos trofeos están desbloqueados
-          let unlockedCount = 0;
-          trophySteps.forEach(step => { if (unlocked[`triki${step}`]) unlockedCount++; });
-          if (unlocked['primeraSangre']) unlockedCount++;
-          if (unlocked['memorion']) unlockedCount++;
-          if (unlocked['python']) unlockedCount++;
-          setTrophiesUnlocked(unlockedCount);
+      // Calcular cuántos trofeos están desbloqueados
+      let unlockedCount = 0;
+      trophySteps.forEach(step => { if (unlocked[`triki${step}`]) unlockedCount++; });
+      if (unlocked['primeraSangre']) unlockedCount++;
+      if (unlocked['memorion']) unlockedCount++;
+      if (unlocked['python']) unlockedCount++;
+      setTrophiesUnlocked(unlockedCount);
         } catch (error) {
           console.error('Error al leer trofeos:', error);
         }
@@ -208,6 +213,23 @@ export default function GamesScreen({ navigation }) {
   // Mostrar solo el trofeo progresivo más próximo y los ya desbloqueados
   const nextTrikiTrophyIndex = trikiTrophies.findIndex(t => !t.unlocked);
   const visibleTrikiTrophies = trikiTrophies.filter((t, i) => t.unlocked || i === nextTrikiTrophyIndex);
+
+  // Cargar progreso de misiones
+  useEffect(() => {
+    async function fetchMissions() {
+      if (!auth.currentUser) return;
+      try {
+        const missionsRef = doc(db, 'users', auth.currentUser.uid, 'missions', 'progress');
+        const missionsSnap = await getDoc(missionsRef);
+        setMissionsProgress(missionsSnap.exists() ? missionsSnap.data() : {});
+        setMissionsLoaded(true);
+      } catch (e) {
+        setMissionsProgress({});
+        setMissionsLoaded(true);
+      }
+    }
+    if (activeTab === 'missions') fetchMissions();
+  }, [activeTab]);
 
   if (showLoading) {
     const msg = loadingMessages[loadingIndex];
@@ -275,8 +297,8 @@ export default function GamesScreen({ navigation }) {
                   <View style={[styles.trophiesProgressBarFill, { width: `${Math.round((trophiesUnlocked/trophiesTotal)*100)}%` }]} />
                 </View>
               </View>
-              {/* Lista de trofeos progresivos de Triki */}
-              <View style={styles.trophyList}>
+              <ScrollView style={{ maxHeight: height * 0.6 }} contentContainerStyle={styles.trophyList} showsVerticalScrollIndicator={false}>
+                {/* Trofeos progresivos de Triki */}
                 {visibleTrikiTrophies.map(trophy => (
                   <View key={trophy.id} style={[styles.trophyCard, !trophy.unlocked && styles.trophyCardLocked]}>
                     <Image source={trophy.unlocked ? require('../assets/trophy-pink.png') : trophyGray} style={trophy.unlocked ? styles.trophyIcon : styles.trophyIconGray} resizeMode="contain" />
@@ -286,7 +308,7 @@ export default function GamesScreen({ navigation }) {
                     </View>
                   </View>
                 ))}
-                {/* Trofeo desbloqueado */}
+                {/* Trofeos fijos */}
                 <View style={styles.trophyCard}>
                   <Image source={require('../assets/trophy-pink.png')} style={styles.trophyIcon} resizeMode="contain" />
                   <View style={styles.trophyTextBox}>
@@ -294,7 +316,6 @@ export default function GamesScreen({ navigation }) {
                     <Text style={styles.trophyDesc}>Gana tu primera partida de Triki</Text>
                   </View>
                 </View>
-                {/* Trofeo desbloqueado */}
                 <View style={styles.trophyCard}>
                   <Image source={require('../assets/trophy-pink.png')} style={styles.trophyIcon} resizeMode="contain" />
                   <View style={styles.trophyTextBox}>
@@ -302,7 +323,6 @@ export default function GamesScreen({ navigation }) {
                     <Text style={styles.trophyDesc}>Gana una partida de DÚOS en difícil</Text>
                   </View>
                 </View>
-                {/* Trofeo bloqueado */}
                 <View style={[styles.trophyCard, styles.trophyCardLocked]}>
                   <Image source={trophyGray} style={styles.trophyIconGray} resizeMode="contain" />
                   <View style={styles.trophyTextBox}>
@@ -310,7 +330,52 @@ export default function GamesScreen({ navigation }) {
                     <Text style={styles.trophyDescGray}>Come 30 pixeles en Snake</Text>
                   </View>
                 </View>
-              </View>
+                {/* Misiones como trofeos adicionales */}
+                {Object.entries(MISSIONS).flatMap(([game, missions]) =>
+                  Object.values(missions).map(mission => {
+                    const progress = missionsProgress[mission.id];
+                    const completed = progress && progress.completed;
+                    return (
+                      <View key={mission.id} style={[styles.trophyCard, !completed && styles.trophyCardLocked]}> 
+                        <Image source={completed ? require('../assets/trophy-pink.png') : trophyGray} style={completed ? styles.trophyIcon : styles.trophyIconGray} resizeMode="contain" />
+                        <View style={styles.trophyTextBox}>
+                          <Text style={[completed ? styles.trophyTitle : styles.trophyTitleGray, ...pixelStroke]}>{mission.name}</Text>
+                          <Text style={{ color: '#7d2fff', fontFamily: pixelFont, fontSize: 11, marginBottom: 2 }}>Misión</Text>
+                          <Text style={completed ? styles.trophyDesc : styles.trophyDescGray}>{mission.description}</Text>
+                          <Text style={{ color: completed ? '#00fff7' : '#aaa', fontFamily: pixelFont, fontSize: 12, marginTop: 2 }}>Recompensa: +{mission.reward} nivel</Text>
+                        </View>
+                      </View>
+                    );
+                  })
+                )}
+              </ScrollView>
+            </View>
+          )}
+          {activeTab === 'missions' && (
+            <View style={styles.trophiesSection}>
+              <Text style={[styles.trophiesTitle, ...pixelStroke]}>Misiones</Text>
+              {!missionsLoaded ? (
+                <Text style={{ color: '#fff', textAlign: 'center', marginTop: 20 }}>Cargando misiones...</Text>
+              ) : (
+                <View style={styles.trophyList}>
+                  {Object.entries(MISSIONS).flatMap(([game, missions]) =>
+                    Object.values(missions).map(mission => {
+                      const progress = missionsProgress[mission.id];
+                      const completed = progress && progress.completed;
+                      return (
+                        <View key={mission.id} style={[styles.trophyCard, !completed && styles.trophyCardLocked]}> 
+                          <Image source={completed ? require('../assets/trophy-pink.png') : trophyGray} style={completed ? styles.trophyIcon : styles.trophyIconGray} resizeMode="contain" />
+                          <View style={styles.trophyTextBox}>
+                            <Text style={[completed ? styles.trophyTitle : styles.trophyTitleGray, ...pixelStroke]}>{mission.name}</Text>
+                            <Text style={completed ? styles.trophyDesc : styles.trophyDescGray}>{mission.description}</Text>
+                            <Text style={{ color: completed ? '#00fff7' : '#aaa', fontFamily: pixelFont, fontSize: 12, marginTop: 2 }}>Recompensa: +{mission.reward} nivel</Text>
+                          </View>
+                        </View>
+                      );
+                    })
+                  )}
+                </View>
+              )}
             </View>
           )}
           {activeTab === 'home' && (
@@ -396,28 +461,10 @@ export default function GamesScreen({ navigation }) {
           )}
         </View>
         {/* Bottom tab fijo */}
-        <View style={styles.fixedTabBar}>
-          <View style={styles.bottomTab}>
-            <TouchableOpacity
-              style={[styles.tabBtn, activeTab === 'trophy' && styles.tabBtnActive]}
-              onPress={() => setActiveTab('trophy')}
-            >
-              <Image source={activeTab === 'trophy' ? require('../assets/trophy-pink.png') : require('../assets/trophy-blue.png')} style={styles.tabIcon} resizeMode="contain" />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.tabBtn, activeTab === 'home' && styles.tabBtnActive]}
-              onPress={() => setActiveTab('home')}
-            >
-              <Image source={activeTab === 'home' ? require('../assets/home-pink.png') : require('../assets/home-blue.png')} style={styles.tabIcon} resizeMode="contain" />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.tabBtn, activeTab === 'user' && styles.tabBtnActive]}
-              onPress={() => setActiveTab('user')}
-            >
-              <Image source={activeTab === 'user' ? require('../assets/user-pink.png') : require('../assets/user-blue.png')} style={styles.tabIcon} resizeMode="contain" />
-            </TouchableOpacity>
-          </View>
-        </View>
+        <BottomTabBar
+          activeTab={activeTab}
+          onTabPress={setActiveTab}
+        />
       </View>
     </SafeAreaView>
   );
@@ -579,55 +626,6 @@ const styles = StyleSheet.create({
     height: Math.max(width * 0.045, 5),
     borderRadius: Math.max(14, width * 0.0225),
   },
-  fixedTabBar: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 100,
-    alignItems: 'center',
-    backgroundColor: 'transparent',
-    paddingBottom: Math.max(height * 0.015, 5),
-  },
-  bottomTab: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    width: Math.min(width * 0.9, 370),
-    maxWidth: 370,
-    backgroundColor: 'transparent',
-    borderRadius: Math.max(18, width * 0.045),
-    borderWidth: 3,
-    borderColor: '#00fff7',
-    paddingVertical: Math.max(height * 0.012, 5),
-    paddingHorizontal: Math.max(width * 0.045, 5),
-    alignSelf: 'center',
-    marginTop: 0,
-    marginBottom: 0,
-    shadowColor: '#00fff7',
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 0 },
-  },
-  tabBtn: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: Math.max(height * 0.012, 5),
-    minHeight: 40,
-  },
-  tabBtnActive: {
-    borderBottomWidth: 4,
-    borderBottomColor: '#ff2e7e',
-    shadowColor: '#ff2e7e',
-    shadowOpacity: 0.7,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 0 },
-  },
-  tabIcon: {
-    width: Math.max(width * 0.09, 5),
-    height: Math.max(width * 0.09, 5),
-  },
   trophiesSection: {
     width: '96%',
     alignSelf: 'center',
@@ -728,5 +726,45 @@ const styles = StyleSheet.create({
     color: '#aaa',
     fontFamily: pixelFont,
     fontSize: Math.min(width * 0.035, 12),
+  },
+  cornerDotTL: {
+    position: 'absolute',
+    top: hp(2.5),
+    left: wp(4),
+    width: scaleDimension(12),
+    height: scaleDimension(12),
+    backgroundColor: '#ff2e7e',
+    borderRadius: scaleDimension(6),
+    zIndex: 2,
+  },
+  cornerDotTR: {
+    position: 'absolute',
+    top: hp(2.5),
+    right: wp(4),
+    width: scaleDimension(12),
+    height: scaleDimension(12),
+    backgroundColor: '#00fff7',
+    borderRadius: scaleDimension(6),
+    zIndex: 2,
+  },
+  cornerDotBL: {
+    position: 'absolute',
+    bottom: hp(2.5),
+    left: wp(4),
+    width: scaleDimension(12),
+    height: scaleDimension(12),
+    backgroundColor: '#00fff7',
+    borderRadius: scaleDimension(6),
+    zIndex: 2,
+  },
+  cornerDotBR: {
+    position: 'absolute',
+    bottom: hp(2.5),
+    right: wp(4),
+    width: scaleDimension(12),
+    height: scaleDimension(12),
+    backgroundColor: '#ff2e7e',
+    borderRadius: scaleDimension(6),
+    zIndex: 2,
   },
 }); 

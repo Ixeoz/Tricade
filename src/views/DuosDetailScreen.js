@@ -26,6 +26,7 @@ export default function DuosDetailScreen({ navigation }) {
   });
   const [isLoading, setIsLoading] = useState(true);
   const [showHelp, setShowHelp] = useState(false);
+  const [selectedDifficulty, setSelectedDifficulty] = useState('Facil');
 
   useFocusEffect(
     React.useCallback(() => {
@@ -71,7 +72,7 @@ export default function DuosDetailScreen({ navigation }) {
 
       <TouchableOpacity 
         style={styles.backButton} 
-        onPress={() => navigation.goBack()}
+        onPress={() => navigation.navigate('Games')}
       >
         <View style={styles.backBox}>
           <Text style={styles.backText}>←</Text>
@@ -95,6 +96,37 @@ export default function DuosDetailScreen({ navigation }) {
               style={styles.centerImg} 
               resizeMode="contain"
             />
+          </View>
+        </View>
+
+        {/* Selector de dificultad */}
+        <View style={styles.difficultyContainer}>
+          <Text style={styles.difficultyLabel}>Dificultad</Text>
+          <View style={styles.difficultyButtonsRow}>
+            <TouchableOpacity 
+              style={[
+                styles.difficultyButton,
+                selectedDifficulty === 'Facil' && styles.difficultyButtonActive
+              ]}
+              onPress={() => setSelectedDifficulty('Facil')}
+            >
+              <Text style={[
+                styles.difficultyText,
+                selectedDifficulty === 'Facil' && styles.difficultyTextActive
+              ]}>Fácil</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[
+                styles.difficultyButton,
+                selectedDifficulty === 'Dificil' && styles.difficultyButtonActive
+              ]}
+              onPress={() => setSelectedDifficulty('Dificil')}
+            >
+              <Text style={[
+                styles.difficultyText,
+                selectedDifficulty === 'Dificil' && styles.difficultyTextActive
+              ]}>Difícil</Text>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -132,7 +164,7 @@ export default function DuosDetailScreen({ navigation }) {
 
         <TouchableOpacity 
           style={styles.startBtn}
-          onPress={() => navigation.navigate('DuosLoading')}
+          onPress={() => navigation.navigate('DuosLoading', { difficulty: selectedDifficulty })}
         >
           <View style={styles.startBtnContent}>
             <Text style={styles.startBtnText}>¡START!</Text>
@@ -568,5 +600,47 @@ const styles = StyleSheet.create({
     width: Math.min(width * 0.22, 80),
     height: Math.min(width * 0.22, 80),
     tintColor: '#00fff7'
+  },
+  difficultyContainer: {
+    width: '100%',
+    maxWidth: 340,
+    marginBottom: height * 0.04,
+    alignItems: 'center',
+  },
+  difficultyLabel: {
+    color: '#00fff7',
+    fontFamily: pixelFont,
+    fontSize: Math.min(width * 0.045, 18),
+    textAlign: 'center',
+    marginBottom: 18,
+    letterSpacing: 1,
+  },
+  difficultyButtonsRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
+    marginBottom: 18,
+  },
+  difficultyButton: {
+    backgroundColor: '#23233a',
+    borderRadius: 12,
+    borderWidth: 3,
+    borderColor: '#00fff7',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    marginHorizontal: 2,
+  },
+  difficultyButtonActive: {
+    backgroundColor: '#00fff7',
+    borderColor: '#ff2e7e',
+  },
+  difficultyText: {
+    color: '#00fff7',
+    fontFamily: pixelFont,
+    fontSize: Math.min(width * 0.045, 18),
+    textAlign: 'center',
+  },
+  difficultyTextActive: {
+    color: '#0a0a23',
   },
 }); 

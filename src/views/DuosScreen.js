@@ -63,6 +63,44 @@ export default function DuosScreen({ navigation }) {
             <Text style={[styles.title, ...pixelStroke]}>DUOS</Text>
           </View>
 
+          {/* Imagen central */}
+          <View style={styles.imageCentralContainer}>
+            <View style={styles.imageCentralBox}>
+              <Text style={styles.imageCentralIcon}>🃏</Text>
+            </View>
+          </View>
+
+          {/* Selector de dificultad (más visible) */}
+          <View style={styles.difficultyContainer}>
+            <Text style={styles.difficultyLabel}>Dificultad</Text>
+            <View style={styles.difficultyButtonsRow}>
+              <TouchableOpacity 
+                style={[
+                  styles.difficultyButton,
+                  selectedDifficulty === 'Facil' && styles.difficultyButtonActive
+                ]}
+                onPress={() => setSelectedDifficulty('Facil')}
+              >
+                <Text style={[
+                  styles.difficultyText,
+                  selectedDifficulty === 'Facil' && styles.difficultyTextActive
+                ]}>Fácil</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[
+                  styles.difficultyButton,
+                  selectedDifficulty === 'Dificil' && styles.difficultyButtonActive
+                ]}
+                onPress={() => setSelectedDifficulty('Dificil')}
+              >
+                <Text style={[
+                  styles.difficultyText,
+                  selectedDifficulty === 'Dificil' && styles.difficultyTextActive
+                ]}>Difícil</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
           {/* Contenedor de estadísticas */}
           <View style={styles.statsContainer}>
             <View style={styles.statRow}>
@@ -77,34 +115,6 @@ export default function DuosScreen({ navigation }) {
               <Text style={styles.statLabel}>Mejor tiempo:</Text>
               <Text style={styles.statValue}>1:30</Text>
             </View>
-          </View>
-
-          {/* Selector de dificultad */}
-          <View style={styles.difficultyContainer}>
-            <TouchableOpacity 
-              style={[
-                styles.difficultyButton,
-                selectedDifficulty === 'Facil' && styles.difficultyButtonActive
-              ]}
-              onPress={() => setSelectedDifficulty('Facil')}
-            >
-              <Text style={[
-                styles.difficultyText,
-                selectedDifficulty === 'Facil' && styles.difficultyTextActive
-              ]}>Facil</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[
-                styles.difficultyButton,
-                selectedDifficulty === 'Dificil' && styles.difficultyButtonActive
-              ]}
-              onPress={() => setSelectedDifficulty('Dificil')}
-            >
-              <Text style={[
-                styles.difficultyText,
-                selectedDifficulty === 'Dificil' && styles.difficultyTextActive
-              ]}>Dificil</Text>
-            </TouchableOpacity>
           </View>
 
           {/* Botones de acción */}
@@ -136,62 +146,62 @@ const styles = StyleSheet.create({
   },
   cornerDotTL: {
     position: 'absolute',
-    top: 18,
-    left: 18,
-    width: 12,
-    height: 12,
+    top: hp(2.5),
+    left: wp(4),
+    width: scaleDimension(12),
+    height: scaleDimension(12),
     backgroundColor: '#ff2e7e',
-    borderRadius: 6,
+    borderRadius: scaleDimension(6),
     zIndex: 2,
   },
   cornerDotTR: {
     position: 'absolute',
-    top: 18,
-    right: 18,
-    width: 12,
-    height: 12,
+    top: hp(2.5),
+    right: wp(4),
+    width: scaleDimension(12),
+    height: scaleDimension(12),
     backgroundColor: '#00fff7',
-    borderRadius: 6,
+    borderRadius: scaleDimension(6),
     zIndex: 2,
   },
   cornerDotBL: {
     position: 'absolute',
-    bottom: 18,
-    left: 18,
-    width: 12,
-    height: 12,
+    bottom: hp(2.5),
+    left: wp(4),
+    width: scaleDimension(12),
+    height: scaleDimension(12),
     backgroundColor: '#00fff7',
-    borderRadius: 6,
+    borderRadius: scaleDimension(6),
     zIndex: 2,
   },
   cornerDotBR: {
     position: 'absolute',
-    bottom: 18,
-    right: 18,
-    width: 12,
-    height: 12,
+    bottom: hp(2.5),
+    right: wp(4),
+    width: scaleDimension(12),
+    height: scaleDimension(12),
     backgroundColor: '#ff2e7e',
-    borderRadius: 6,
+    borderRadius: scaleDimension(6),
     zIndex: 2,
   },
   backButton: {
     position: 'absolute',
-    top: height * 0.025,
-    left: width * 0.04,
+    top: hp(2.5),
+    left: wp(4),
     zIndex: 10,
   },
   backBox: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
+    width: scaleDimension(36),
+    height: scaleDimension(36),
+    borderRadius: scaleDimension(8),
     backgroundColor: '#3a2172',
-    borderWidth: 2,
+    borderWidth: scaleDimension(2),
     borderColor: '#ff2e7e',
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#ff2e7e',
     shadowOpacity: 0.3,
-    shadowRadius: 6,
+    shadowRadius: scaleDimension(6),
     shadowOffset: { width: 0, height: 0 },
   },
   backText: {
@@ -311,5 +321,35 @@ const styles = StyleSheet.create({
     fontFamily: pixelFont,
     fontSize: scaleFont(24),
     textAlign: 'center',
+  },
+  imageCentralContainer: {
+    alignItems: 'center',
+    marginBottom: scaleDimension(18),
+  },
+  imageCentralBox: {
+    borderWidth: 4,
+    borderColor: '#00fff7',
+    borderRadius: 18,
+    padding: scaleDimension(18),
+    backgroundColor: '#23233a',
+    marginBottom: scaleDimension(8),
+  },
+  imageCentralIcon: {
+    fontSize: scaleFont(48),
+    color: '#ff2e7e',
+    textAlign: 'center',
+  },
+  difficultyLabel: {
+    color: '#00fff7',
+    fontFamily: pixelFont,
+    fontSize: scaleFont(16),
+    textAlign: 'center',
+    marginBottom: scaleDimension(6),
+    letterSpacing: 1,
+  },
+  difficultyButtonsRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: scaleDimension(12),
   },
 }); 
