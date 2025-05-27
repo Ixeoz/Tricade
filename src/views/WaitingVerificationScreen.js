@@ -13,6 +13,8 @@ import {
   scaleFont,
   getResponsiveDimension
 } from '../utils/dimensions';
+import { getFirestore } from 'firebase/firestore';
+import { setDoc, doc } from 'firebase/firestore';
 
 const pixelFont = 'PressStart2P_400Regular';
 
@@ -25,10 +27,18 @@ export default function WaitingVerificationScreen({ route, navigation }) {
         await reload(firebaseUser);
         if (firebaseUser.emailVerified) {
           clearInterval(interval);
+          // Primero actualizar el estado de verificación en Firestore
+          const db = getFirestore();
+          await setDoc(doc(db, 'users', firebaseUser.uid), {
+            emailVerified: true,
+            lastVerifiedAt: new Date().toISOString()
+          }, { merge: true });
+          
+          // Luego navegar a Home
           navigation.replace('Home');
         }
       } catch (e) {
-        // Puedes mostrar un error si quieres
+        console.error('Error checking verification:', e);
       }
     }, 3000);
     return () => clearInterval(interval);
