@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, SafeAreaView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { reload } from 'firebase/auth';
@@ -20,29 +20,62 @@ const pixelFont = 'PressStart2P_400Regular';
 
 export default function WaitingVerificationScreen({ route, navigation }) {
   const { firebaseUser } = route.params;
+  const [error, setError] = useState(null);
+  const [isChecking, setIsChecking] = useState(true);
 
   useEffect(() => {
-    const interval = setInterval(async () => {
+    let isMounted = true;
+    const checkVerification = async () => {
       try {
+        setIsChecking(true);
+        setError(null);
+        
+        // Reload user to get latest verification status
         await reload(firebaseUser);
+        
         if (firebaseUser.emailVerified) {
-          clearInterval(interval);
-          // Primero actualizar el estado de verificación en Firestore
-          const db = getFirestore();
-          await setDoc(doc(db, 'users', firebaseUser.uid), {
-            emailVerified: true,
-            lastVerifiedAt: new Date().toISOString()
-          }, { merge: true });
-          
-          // Luego navegar a Home
-          navigation.replace('Home');
+          try {
+            // Update verification status in Firestore
+            const db = getFirestore();
+            await setDoc(doc(db, 'users', firebaseUser.uid), {
+              emailVerified: true,
+              lastVerifiedAt: new Date().toISOString()
+            }, { merge: true });
+            
+            if (isMounted) {
+              navigation.replace('Home');
+            }
+          } catch (firestoreError) {
+            console.error('Error updating Firestore:', firestoreError);
+            if (isMounted) {
+              setError('Error al actualizar el estado de verificación. Por favor, intenta iniciar sesión nuevamente.');
+            }
+          }
         }
-      } catch (e) {
-        console.error('Error checking verification:', e);
+      } catch (error) {
+        console.error('Error checking verification:', error);
+        if (isMounted) {
+          setError('Error al verificar el estado. Por favor, intenta nuevamente.');
+        }
+      } finally {
+        if (isMounted) {
+          setIsChecking(false);
+        }
       }
-    }, 3000);
-    return () => clearInterval(interval);
-  }, []);
+    };
+
+    // Initial check
+    checkVerification();
+
+    // Set up interval for periodic checks
+    const interval = setInterval(checkVerification, 3000);
+
+    // Cleanup
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, [firebaseUser, navigation]);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#0a0a23' }}>
@@ -53,8 +86,10 @@ export default function WaitingVerificationScreen({ route, navigation }) {
         <View style={styles.cornerDotBR} />
         <Ionicons name="mail-unread" size={scaleDimension(64)} color="#00fff7" style={{ marginBottom: scaleDimension(24) }} />
         <Text style={styles.title}>Verificando tu cuenta…</Text>
-        <Text style={styles.msg}>Revisa tu correo y haz clic en el enlace de verificación. Esta ventana se cerrará automáticamente cuando completes la verificación.</Text>
-        <ActivityIndicator size="large" color="#00fff7" style={{ marginTop: scaleDimension(32) }} />
+        <Text style={styles.msg}>
+          {error ? error : 'Revisa tu correo y haz clic en el enlace de verificación. Esta ventana se cerrará automáticamente cuando completes la verificación.'}
+        </Text>
+        {isChecking && <ActivityIndicator size="large" color="#00fff7" style={{ marginTop: scaleDimension(32) }} />}
       </View>
     </SafeAreaView>
   );

@@ -30,7 +30,16 @@ const AppNavigator = ({ user }) => (
         cardStyle: { backgroundColor: '#0a0a23' }
       }}
     >
-      {user ? (
+      {/* Auth screens - always available */}
+      <Stack.Screen name="Login" component={LoginScreen} />
+      <Stack.Screen name="Register" component={RegisterScreen} />
+      <Stack.Screen name="Verification" component={VerificationScreen} />
+      <Stack.Screen name="EmailValidator" component={EmailValidatorScreen} />
+      <Stack.Screen name="WaitingVerification" component={WaitingVerificationScreen} />
+      <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
+
+      {/* Game screens - only available when user is logged in */}
+      {user && (
         <>
           <Stack.Screen name="Games" component={GamesScreen} />
           <Stack.Screen name="Home" component={HomeScreen} />
@@ -42,15 +51,6 @@ const AppNavigator = ({ user }) => (
           <Stack.Screen name="DuosDetailScreen" component={DuosDetailScreen} />
           <Stack.Screen name="DuosLoading" component={DuosLoadingScreen} />
           <Stack.Screen name="DuosGame" component={DuosGameScreen} />
-        </>
-      ) : (
-        <>
-      <Stack.Screen name="Login" component={LoginScreen} />
-      <Stack.Screen name="Register" component={RegisterScreen} />
-      <Stack.Screen name="Verification" component={VerificationScreen} />
-      <Stack.Screen name="EmailValidator" component={EmailValidatorScreen} />
-      <Stack.Screen name="WaitingVerification" component={WaitingVerificationScreen} />
-          <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
         </>
       )}
       {/* <Stack.Screen name="Games" component={GamesScreen} /> */}
