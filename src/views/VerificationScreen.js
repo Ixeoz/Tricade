@@ -97,7 +97,7 @@ export default function VerificationScreen({ route, navigation }) {
       await setDoc(doc(db, 'users', userCredential.user.uid), userData);
       setIsEmailSent(true);
       setTimeout(() => {
-        navigation.replace('WaitingVerificationScreen', { 
+        navigation.replace('WaitingVerification', { 
           firebaseUser: userCredential.user,
           username,
           userId: userCredential.user.uid
