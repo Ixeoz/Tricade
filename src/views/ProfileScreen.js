@@ -536,38 +536,7 @@ export async function addTrikiWinExp() {
       updates.avatarSpecial = special.image; // Store only the filename string
     }
     await setDoc(userRef, updates, { merge: true });
-
-    // Actualizar estadísticas y trofeos
-    try {
-      const statsRef = doc(db, 'users', auth.currentUser.uid, 'trikiStats', 'stats');
-      const statsDoc = await getDoc(statsRef);
-      let prev = { victorias: 0, derrotas: 0 };
-      if (statsDoc.exists()) {
-        prev = statsDoc.data();
-      }
-      await setDoc(statsRef, {
-        victorias: prev.victorias + 1,
-        derrotas: prev.derrotas
-      }, { merge: true });
-
-      // Verificar misiones
-      const missionReward = await checkAndUpdateMissions(
-        auth.currentUser.uid,
-        'TRIKI',
-        {
-          victorias: prev.victorias + 1,
-          derrotas: prev.derrotas
-        }
-      );
-
-      // Si hay recompensa por misiones, sumarla al nivel
-      if (missionReward > 0) {
-        await updateDoc(userRef, { level: increment(missionReward) });
-      }
-    } catch (statsError) {
-      console.warn('Error al actualizar estadísticas:', statsError);
-      // Continuar con la ejecución aunque falle la actualización de estadísticas
-    }
+    // Ya NO actualizar estadísticas ni victorias aquí
   } catch (error) {
     console.error('Error al actualizar experiencia:', error);
     // No propagar el error para no interrumpir el flujo del juego

@@ -44,6 +44,7 @@ export default function TrikiGameScreen({ navigation }) {
   const [paused, setPaused] = useState(false);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [boardLayout, setBoardLayout] = useState({ width: 0, height: 0 });
+  const [statsUpdated, setStatsUpdated] = useState(false);
 
   useEffect(() => {
     if (timer > 0 && !gameOver && !paused) {
@@ -155,18 +156,24 @@ export default function TrikiGameScreen({ navigation }) {
     if (win) {
       setGameOver(true);
       setWinnerLine(win.line);
-      if (turn === 'X') {
-        setScore(s => ({ ...s, user: s.user + 1 }));
-        updateStats('victorias');
-        addTrikiWinExp();
-      } else {
-        setScore(s => ({ ...s, ai: s.ai + 1 }));
-        updateStats('derrotas');
+      if (!statsUpdated) {
+        setStatsUpdated(true);
+        if (turn === 'X') {
+          setScore(s => ({ ...s, user: s.user + 1 }));
+          updateStats('victorias');
+          addTrikiWinExp();
+        } else {
+          setScore(s => ({ ...s, ai: s.ai + 1 }));
+          updateStats('derrotas');
+        }
       }
       setTimeout(resetBoard, 1800);
     } else if (newBoard.flat().every(cell => cell)) {
       setGameOver(true);
-      updateStats('empates');
+      if (!statsUpdated) {
+        setStatsUpdated(true);
+        updateStats('empates');
+      }
       setTimeout(resetBoard, 1800);
     } else {
       setTurn(turn === 'X' ? 'O' : 'X');
@@ -178,6 +185,7 @@ export default function TrikiGameScreen({ navigation }) {
     setTurn('X');
     setGameOver(false);
     setWinnerLine(null);
+    setStatsUpdated(false);
   }
 
   return (
@@ -250,12 +258,14 @@ export default function TrikiGameScreen({ navigation }) {
               <View style={styles.pauseBox}>
                 <Text style={styles.exitMsg}>¿Seguro que que quieres salir?</Text>
                 <Text style={styles.exitWarn}>No se guardara el progreso</Text>
-                <TouchableOpacity style={[styles.pauseBtn, { marginBottom: 8 }]} onPress={() => { setShowExitConfirm(false); navigation.goBack(); }}>
-                  <Text style={[styles.pauseBtnText, { color: '#ff2e7e' }]}>Salir</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.pauseBtn} onPress={() => setShowExitConfirm(false)}>
-                  <Text style={[styles.pauseBtnText, { color: '#00fff7' }]}>Cancelar</Text>
-                </TouchableOpacity>
+                <View style={styles.exitBtnRow}>
+                  <TouchableOpacity style={[styles.pauseBtn, { marginRight: 10, borderColor: '#ff2e7e', flex: 1 }]} onPress={() => { setShowExitConfirm(false); navigation.goBack(); }}>
+                    <Text style={[styles.pauseBtnText, { color: '#ff2e7e' }]}>Salir</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={[styles.pauseBtn, { borderColor: '#00fff7', flex: 1 }]} onPress={() => setShowExitConfirm(false)}>
+                    <Text style={[styles.pauseBtnText, { color: '#00fff7' }]}>Cancelar</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             </View>
           </View>
@@ -568,5 +578,14 @@ const styles = StyleSheet.create({
     fontSize: Math.min(width * 0.042, 16),
     textAlign: 'center',
     marginBottom: Math.max(18, width * 0.005),
+  },
+  exitBtnRow: {
+    flexDirection: 'row',
+    width: '100%',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 8,
+    marginBottom: 2,
+    gap: 10,
   },
 }); 

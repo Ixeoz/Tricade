@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TextInput, ActivityIndicator, TouchableOpacity, SafeAreaView, ScrollView, Pressable } from 'react-native';
 import RetroButton from '../components/RetroButton';
 import { signInWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '../firebaseConfig';
+import { auth, db } from '../firebaseConfig';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 import {
   screenWidth as width,
   screenHeight as height,
@@ -38,7 +39,7 @@ export default function LoginScreen({ navigation }) {
   const [isSuccess, setIsSuccess] = useState(false);
 
   const handleLogin = async (e) => {
-    if (e) {
+    if (e && e.preventDefault) {
       e.preventDefault();
     }
     if (!email.trim() || !password.trim()) {
@@ -47,15 +48,34 @@ export default function LoginScreen({ navigation }) {
     }
     setError('');
     setIsLoading(true);
+    let loginEmail = email.trim();
     try {
-      await signInWithEmailAndPassword(auth, email.trim(), password);
-      // El listener de App.js se encargará del resto
+      // Si no es email, buscar por usuario
+      if (!loginEmail.includes('@')) {
+        const q = query(collection(db, 'users'), where('displayName', '==', loginEmail));
+        const querySnapshot = await getDocs(q);
+        if (querySnapshot.empty) {
+          setError('Usuario no encontrado');
+          setIsLoading(false);
+          return;
+        }
+        const userData = querySnapshot.docs[0].data();
+        if (!userData.email) {
+          setError('Usuario sin email registrado');
+          setIsLoading(false);
+          return;
+        }
+        loginEmail = userData.email;
+      }
+      await signInWithEmailAndPassword(auth, loginEmail, password);
       setIsSuccess(true);
       setTimeout(() => {
         setIsSuccess(false);
-      }, 1500);
+        navigation.replace && navigation.replace('Home');
+      }, 800);
     } catch (e) {
-      setError('Email o contraseña incorrectos');
+      setError(e.message || 'Email/usuario o contraseña incorrectos');
+      console.error('Login error:', e);
     } finally {
       setIsLoading(false);
     }
@@ -85,74 +105,143 @@ export default function LoginScreen({ navigation }) {
             </View>
           </View>
           {!isSuccess ? (
-            <View style={{ width: '100%', alignItems: 'center' }}>
-              <View style={[styles.inputBox, focusInput === 'email' && styles.inputBoxGlow]}>
-                <TextInput
-                  style={styles.input}
-                  value={email}
-                  onChangeText={t => { setEmail(t); setError(''); }}
-                  placeholder="Email"
-                  placeholderTextColor="#00fff7"
-                  maxLength={64}
-                  autoCapitalize="none"
-                  keyboardType="email-address"
-                  onFocus={() => setFocusInput('email')}
-                  onBlur={() => setFocusInput('')}
-                  editable={!isLoading}
-                  autoComplete="email"
-                  returnKeyType="next"
-                  onSubmitEditing={() => {
-                    // Focus password input if needed
-                  }}
+            typeof window !== 'undefined' ? (
+              <form onSubmit={handleLogin} style={{ width: '100%', alignItems: 'center', background: 'none', border: 'none' }} autoComplete="on">
+                <View style={{ width: '100%', alignItems: 'center' }}>
+                  <View style={[styles.inputBox, focusInput === 'email' && styles.inputBoxGlow]}>
+                    <TextInput
+                      style={styles.input}
+                      value={email}
+                      onChangeText={t => { setEmail(t); setError(''); }}
+                      placeholder="Email o usuario"
+                      placeholderTextColor="#00fff7"
+                      maxLength={64}
+                      autoCapitalize="none"
+                      keyboardType="email-address"
+                      onFocus={() => setFocusInput('email')}
+                      onBlur={() => setFocusInput('')}
+                      editable={!isLoading}
+                      autoComplete="username"
+                      name="username"
+                      returnKeyType="next"
+                    />
+                  </View>
+                  <View style={[styles.inputBox, focusInput === 'pass' && styles.inputBoxGlow]}>
+                    <TextInput
+                      style={styles.input}
+                      value={password}
+                      onChangeText={t => { setPassword(t); setError(''); }}
+                      placeholder="Contraseña"
+                      placeholderTextColor="#00fff7"
+                      secureTextEntry
+                      maxLength={32}
+                      onFocus={() => setFocusInput('pass')}
+                      onBlur={() => setFocusInput('')}
+                      editable={!isLoading}
+                      autoComplete="current-password"
+                      name="password"
+                      returnKeyType="done"
+                    />
+                  </View>
+                  {/* Barra pixelada separadora */}
+                  <View style={styles.pixelBarSeparator}>
+                    {Array.from({ length: 18 }).map((_, i) => (
+                      <View key={i} style={[styles.pixelBarChunk, i % 2 === 0 ? styles.pixelBarChunkBlue : styles.pixelBarChunkPink]} />
+                    ))}
+                  </View>
+                  {error ? <Text style={styles.errorMsg}>{error}</Text> : null}
+                  <button type="submit" style={{ display: 'none' }} aria-hidden="true"></button>
+                  <RetroButton
+                    title="Iniciar sesión"
+                    onPress={handleLogin}
+                    style={[styles.glowBtn, email.trim() && password.trim() ? undefined : styles.disabledBtn]}
+                    disabled={!email.trim() || !password.trim() || isLoading}
+                  />
+                  <Pressable
+                    style={styles.forgotBtn}
+                    onPress={() => navigation.navigate('ResetPassword')}
+                    disabled={isLoading}
+                  >
+                    <Text style={styles.forgotBtnText}>¿Olvidaste tu contraseña?</Text>
+                  </Pressable>
+                  <Pressable
+                    style={({ pressed }) => [styles.registerBtn, registerPressed || pressed ? styles.registerBtnActive : null]}
+                    onPressIn={() => setRegisterPressed(true)}
+                    onPressOut={() => setRegisterPressed(false)}
+                    onPress={() => navigation && navigation.navigate && navigation.navigate('Register')}
+                    disabled={isLoading}
+                  >
+                    <Text style={styles.registerBtnText}>Registrarse</Text>
+                  </Pressable>
+                </View>
+              </form>
+            ) : (
+              <View style={{ width: '100%', alignItems: 'center' }}>
+                <View style={[styles.inputBox, focusInput === 'email' && styles.inputBoxGlow]}>
+                  <TextInput
+                    style={styles.input}
+                    value={email}
+                    onChangeText={t => { setEmail(t); setError(''); }}
+                    placeholder="Email o usuario"
+                    placeholderTextColor="#00fff7"
+                    maxLength={64}
+                    autoCapitalize="none"
+                    keyboardType="email-address"
+                    onFocus={() => setFocusInput('email')}
+                    onBlur={() => setFocusInput('')}
+                    editable={!isLoading}
+                    autoComplete="username"
+                    returnKeyType="next"
+                  />
+                </View>
+                <View style={[styles.inputBox, focusInput === 'pass' && styles.inputBoxGlow]}>
+                  <TextInput
+                    style={styles.input}
+                    value={password}
+                    onChangeText={t => { setPassword(t); setError(''); }}
+                    placeholder="Contraseña"
+                    placeholderTextColor="#00fff7"
+                    secureTextEntry
+                    maxLength={32}
+                    onFocus={() => setFocusInput('pass')}
+                    onBlur={() => setFocusInput('')}
+                    editable={!isLoading}
+                    autoComplete="current-password"
+                    returnKeyType="done"
+                    onSubmitEditing={handleLogin}
+                  />
+                </View>
+                {/* Barra pixelada separadora */}
+                <View style={styles.pixelBarSeparator}>
+                  {Array.from({ length: 18 }).map((_, i) => (
+                    <View key={i} style={[styles.pixelBarChunk, i % 2 === 0 ? styles.pixelBarChunkBlue : styles.pixelBarChunkPink]} />
+                  ))}
+                </View>
+                {error ? <Text style={styles.errorMsg}>{error}</Text> : null}
+                <RetroButton
+                  title="Iniciar sesión"
+                  onPress={handleLogin}
+                  style={[styles.glowBtn, email.trim() && password.trim() ? undefined : styles.disabledBtn]}
+                  disabled={!email.trim() || !password.trim() || isLoading}
                 />
+                <Pressable
+                  style={styles.forgotBtn}
+                  onPress={() => navigation.navigate('ResetPassword')}
+                  disabled={isLoading}
+                >
+                  <Text style={styles.forgotBtnText}>¿Olvidaste tu contraseña?</Text>
+                </Pressable>
+                <Pressable
+                  style={({ pressed }) => [styles.registerBtn, registerPressed || pressed ? styles.registerBtnActive : null]}
+                  onPressIn={() => setRegisterPressed(true)}
+                  onPressOut={() => setRegisterPressed(false)}
+                  onPress={() => navigation && navigation.navigate && navigation.navigate('Register')}
+                  disabled={isLoading}
+                >
+                  <Text style={styles.registerBtnText}>Registrarse</Text>
+                </Pressable>
               </View>
-              <View style={[styles.inputBox, focusInput === 'pass' && styles.inputBoxGlow]}>
-                <TextInput
-                  style={styles.input}
-                  value={password}
-                  onChangeText={t => { setPassword(t); setError(''); }}
-                  placeholder="Contraseña"
-                  placeholderTextColor="#00fff7"
-                  secureTextEntry
-                  maxLength={32}
-                  onFocus={() => setFocusInput('pass')}
-                  onBlur={() => setFocusInput('')}
-                  editable={!isLoading}
-                  autoComplete="current-password"
-                  returnKeyType="done"
-                  onSubmitEditing={handleLogin}
-                />
-              </View>
-              {/* Barra pixelada separadora */}
-              <View style={styles.pixelBarSeparator}>
-                {Array.from({ length: 18 }).map((_, i) => (
-                  <View key={i} style={[styles.pixelBarChunk, i % 2 === 0 ? styles.pixelBarChunkBlue : styles.pixelBarChunkPink]} />
-                ))}
-              </View>
-              {error ? <Text style={styles.errorMsg}>{error}</Text> : null}
-              <RetroButton
-                title="Iniciar sesión"
-                onPress={handleLogin}
-                style={[styles.glowBtn, email.trim() && password.trim() ? undefined : styles.disabledBtn]}
-                disabled={!email.trim() || !password.trim() || isLoading}
-              />
-              <Pressable
-                style={styles.forgotBtn}
-                onPress={() => navigation.navigate('ResetPassword')}
-                disabled={isLoading}
-              >
-                <Text style={styles.forgotBtnText}>¿Olvidaste tu contraseña?</Text>
-              </Pressable>
-              <Pressable
-                style={({ pressed }) => [styles.registerBtn, registerPressed || pressed ? styles.registerBtnActive : null]}
-                onPressIn={() => setRegisterPressed(true)}
-                onPressOut={() => setRegisterPressed(false)}
-                onPress={() => navigation && navigation.navigate && navigation.navigate('Register')}
-                disabled={isLoading}
-              >
-                <Text style={styles.registerBtnText}>Registrarse</Text>
-              </Pressable>
-            </View>
+            )
           ) : (
             <View style={styles.successContainer}>
               <Text style={styles.successText}>¡Inicio de sesión exitoso!</Text>
