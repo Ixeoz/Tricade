@@ -1,8 +1,47 @@
 {
-  "plugins": [
-    "expo-font"
-  ],
-  "android": {
-    "package": "com.tricade2025.tricade"
+  "expo": {
+    "name": "Tricade",
+    "slug": "tricade",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "com.tricade2025.tricade",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "versionCode": 1,
+      "permissions": [
+        "INTERNET",
+        "VIBRATE",
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE"
+      ]
+    },
+    "plugins": [
+      "expo-font",
+      "expo-av",
+      "expo-image-picker",
+      "expo-sensors"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "2743a93b-8524-45d2-97d7-71697474d820"
+      }
+    }
   }
 }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Image, Dimensions, TouchableOpacity, SafeAreaView, Modal } from 'react-native';
 import { auth, db } from '../firebaseConfig';
 import { doc, getDoc, setDoc, increment } from 'firebase/firestore';
@@ -28,6 +28,8 @@ const initialBoard = [
   ['', '', ''],
 ];
 
+const MAX_BOARD_SIZE = Math.min(width * 0.98, 380);
+
 function formatTime(seconds) {
   const m = Math.floor(seconds / 60).toString();
   const s = (seconds % 60).toString().padStart(2, '0');
@@ -45,6 +47,7 @@ export default function TrikiGameScreen({ navigation }) {
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [boardLayout, setBoardLayout] = useState({ width: 0, height: 0 });
   const [statsUpdated, setStatsUpdated] = useState(false);
+  const aiThinking = useRef(false);
 
   useEffect(() => {
     if (timer > 0 && !gameOver && !paused) {
@@ -53,19 +56,70 @@ export default function TrikiGameScreen({ navigation }) {
     }
   }, [timer, gameOver, paused]);
 
-  // Simple AI: pick first empty
   useEffect(() => {
-    if (turn === 'O' && !gameOver && !paused) {
-      const empty = [];
-      board.forEach((row, i) => row.forEach((cell, j) => { if (!cell) empty.push([i, j]); }));
-      if (empty.length > 0) {
-        setTimeout(() => {
-          const [i, j] = empty[Math.floor(Math.random() * empty.length)];
-          makeMove(i, j);
-        }, 600);
+    if (turn === 'O' && !gameOver && !paused && !aiThinking.current) {
+      aiThinking.current = true;
+      setTimeout(() => {
+        // Verifica que sigue siendo el turno de la IA y el juego no terminó
+        if (turn !== 'O' || gameOver || paused) {
+          aiThinking.current = false;
+          return;
+        }
+        const empty = [];
+        board.forEach((row, i) => row.forEach((cell, j) => { if (!cell) empty.push([i, j]); }));
+        if (empty.length > 0) {
+          // Primero intentar ganar
+          const winningMove = findBestMove(board, 'O');
+          if (winningMove) {
+            makeMove(winningMove[0], winningMove[1]);
+          } else {
+            // Luego intentar bloquear al jugador
+            const blockingMove = findBestMove(board, 'X');
+            if (blockingMove) {
+              makeMove(blockingMove[0], blockingMove[1]);
+            } else {
+              // Si no hay movimientos estratégicos, elegir aleatoriamente
+              const [i, j] = empty[Math.floor(Math.random() * empty.length)];
+              makeMove(i, j);
+            }
+          }
+        }
+        aiThinking.current = false;
+      }, 600);
+    } else if (turn === 'X') {
+      aiThinking.current = false;
+    }
+  }, [turn, gameOver, paused]);
+
+  // Función para encontrar el mejor movimiento
+  function findBestMove(board, player) {
+    // Verificar filas
+    for (let i = 0; i < 3; i++) {
+      const row = board[i];
+      if (row.filter(cell => cell === player).length === 2 && row.includes('')) {
+        return [i, row.indexOf('')];
       }
     }
-  }, [turn, board, gameOver, paused]);
+    // Verificar columnas
+    for (let j = 0; j < 3; j++) {
+      const col = [board[0][j], board[1][j], board[2][j]];
+      if (col.filter(cell => cell === player).length === 2 && col.includes('')) {
+        return [col.indexOf(''), j];
+      }
+    }
+    // Verificar diagonales
+    const diag1 = [board[0][0], board[1][1], board[2][2]];
+    if (diag1.filter(cell => cell === player).length === 2 && diag1.includes('')) {
+      const index = diag1.indexOf('');
+      return [index, index];
+    }
+    const diag2 = [board[0][2], board[1][1], board[2][0]];
+    if (diag2.filter(cell => cell === player).length === 2 && diag2.includes('')) {
+      const index = diag2.indexOf('');
+      return [index, 2 - index];
+    }
+    return null;
+  }
 
   async function updateStats(result) {
     if (!auth.currentUser) return;
@@ -97,19 +151,16 @@ export default function TrikiGameScreen({ navigation }) {
         currentStats
       );
 
-      // Si es victoria, revisar para subir nivel y trofeo progresivo
+      // Si es victoria, subir solo un nivel
       if (result === 'victorias') {
+        await setDoc(userDocRef, { level: increment(1) }, { merge: true });
+        
+        // Trofeos progresivos cada 50 victorias (solo el trofeo, sin nivel extra)
         const victorias = currentStats.victorias || 0;
-        // Cada 5 victorias, sube 2 niveles
-        if (victorias > 0 && victorias % 5 === 0) {
-          await setDoc(userDocRef, { level: increment(2) }, { merge: true });
-        }
-        // Trofeos progresivos cada 50 victorias
         if (victorias > 0 && victorias % 50 === 0) {
           const trophyId = `triki${victorias}`;
           const trophyRef = doc(userRef, 'trophies', trophyId);
           await setDoc(trophyRef, { unlocked: true, date: new Date().toISOString(), count: victorias });
-          await setDoc(userDocRef, { level: increment(10) }, { merge: true });
         }
       }
 
@@ -191,6 +242,10 @@ export default function TrikiGameScreen({ navigation }) {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#0a0a23' }}>
       <View style={styles.root}>
+        {/* Encabezado TRIKI centrado */}
+        <View style={styles.headerBox}>
+          <Text style={styles.headerTitle}>TRIKI</Text>
+        </View>
         {/* Top bar mejorada */}
         <View style={styles.topBar}>
           {/* Botón de volver */}
@@ -253,19 +308,17 @@ export default function TrikiGameScreen({ navigation }) {
           animationType="fade"
           onRequestClose={() => setShowExitConfirm(false)}
         >
-          <View style={styles.pauseOverlay}>
-            <View style={styles.pauseBoxBorder}>
-              <View style={styles.pauseBox}>
-                <Text style={styles.exitMsg}>¿Seguro que que quieres salir?</Text>
-                <Text style={styles.exitWarn}>No se guardara el progreso</Text>
-                <View style={styles.exitBtnRow}>
-                  <TouchableOpacity style={[styles.pauseBtn, { marginRight: 10, borderColor: '#ff2e7e', flex: 1 }]} onPress={() => { setShowExitConfirm(false); navigation.goBack(); }}>
-                    <Text style={[styles.pauseBtnText, { color: '#ff2e7e' }]}>Salir</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={[styles.pauseBtn, { borderColor: '#00fff7', flex: 1 }]} onPress={() => setShowExitConfirm(false)}>
-                    <Text style={[styles.pauseBtnText, { color: '#00fff7' }]}>Cancelar</Text>
-                  </TouchableOpacity>
-                </View>
+          <View style={styles.exitModal}>
+            <View style={styles.exitBox}>
+              <Text style={styles.exitTitle}>¿Seguro que que quieres salir?</Text>
+              <Text style={styles.exitText}>No se guardara el progreso</Text>
+              <View style={styles.exitButtons}>
+                <TouchableOpacity style={styles.exitButton} onPress={() => { setShowExitConfirm(false); navigation.goBack(); }}>
+                  <Text style={styles.exitButtonText}>Salir</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.exitButtonCancel} onPress={() => setShowExitConfirm(false)}>
+                  <Text style={styles.exitButtonCancelText}>Cancelar</Text>
+                </TouchableOpacity>
               </View>
             </View>
           </View>
@@ -346,12 +399,32 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'flex-start',
     width: '100%',
+    alignSelf: 'center',
+  },
+  headerBox: {
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 10,
+    marginBottom: 2,
+  },
+  headerTitle: {
+    fontFamily: pixelFont,
+    color: '#00fff7',
+    fontSize: Math.min(width * 0.13, 38),
+    textAlign: 'center',
+    letterSpacing: 2,
+    textShadowColor: '#000',
+    textShadowOffset: { width: 2, height: 2 },
+    textShadowRadius: 0,
+    maxWidth: '90%',
+    alignSelf: 'center',
   },
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    width: '92%',
+    width: '96%',
     marginTop: Math.max(12, height * 0.018),
     marginBottom: Math.max(12, height * 0.01),
     alignSelf: 'center',
@@ -499,93 +572,77 @@ const styles = StyleSheet.create({
     fontSize: Math.min(width * 0.09, 32),
     letterSpacing: 2,
   },
-  pauseOverlay: {
+  exitModal: {
     flex: 1,
-    backgroundColor: 'rgba(10,10,35,0.93)',
-    alignItems: 'center',
+    backgroundColor: 'rgba(10,10,35,0.95)',
     justifyContent: 'center',
-    padding: Math.max(18, width * 0.03),
-    zIndex: 100,
+    alignItems: 'center',
+    padding: 20,
   },
-  pauseBoxBorder: {
-    borderWidth: 6,
-    borderColor: '#00fff7',
-    borderRadius: Math.max(22, width * 0.045),
+  exitBox: {
     backgroundColor: '#23233a',
-    padding: Math.max(6, width * 0.005),
-    shadowColor: '#00fff7',
-    shadowOpacity: 0.18,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 0 },
-  },
-  pauseBox: {
+    borderRadius: 16,
     borderWidth: 4,
     borderColor: '#ff2e7e',
-    borderRadius: Math.max(16, width * 0.045),
-    backgroundColor: '#101926',
-    paddingVertical: Math.max(height * 0.03, width * 0.06),
-    paddingHorizontal: Math.max(width * 0.06, 220),
-    alignItems: 'center',
-    maxWidth: Math.min(width * 0.9, 370),
-    minWidth: Math.max(220, width * 0.06),
-  },
-  pauseTitle: {
-    color: '#ff2e7e',
-    fontFamily: pixelFont,
-    fontSize: Math.min(width * 0.06, 26),
-    textAlign: 'center',
-    marginBottom: Math.max(10, width * 0.005),
-    letterSpacing: 1,
-  },
-  pauseMsg: {
-    color: '#fff',
-    fontFamily: pixelFont,
-    fontSize: Math.min(width * 0.045, 18),
-    textAlign: 'center',
-    marginBottom: Math.max(18, width * 0.005),
-  },
-  pauseBtn: {
+    padding: 24,
     width: '90%',
-    alignSelf: 'center',
-    backgroundColor: '#101926',
-    borderWidth: 3,
-    borderColor: '#00fff7',
-    borderRadius: Math.max(12, width * 0.045),
-    paddingVertical: Math.max(height * 0.022, width * 0.03),
-    marginTop: Math.max(height * 0.01, width * 0.005),
-    shadowColor: '#00fff7',
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
+    maxWidth: 320,
+    alignItems: 'center',
+    shadowColor: '#ff2e7e',
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
     shadowOffset: { width: 0, height: 0 },
   },
-  pauseBtnText: {
-    color: '#00fff7',
-    fontFamily: pixelFont,
-    fontSize: Math.min(width * 0.06, 22),
-    textAlign: 'center',
-    letterSpacing: 2,
-  },
-  exitMsg: {
-    color: '#fff',
-    fontFamily: pixelFont,
-    fontSize: Math.min(width * 0.045, 18),
-    textAlign: 'center',
-    marginBottom: Math.max(8, width * 0.005),
-  },
-  exitWarn: {
+  exitTitle: {
     color: '#ff2e7e',
     fontFamily: pixelFont,
-    fontSize: Math.min(width * 0.042, 16),
+    fontSize: Math.min(width * 0.06, 22),
+    marginBottom: 16,
     textAlign: 'center',
-    marginBottom: Math.max(18, width * 0.005),
+    letterSpacing: 1,
   },
-  exitBtnRow: {
+  exitText: {
+    color: '#fff',
+    fontFamily: pixelFont,
+    fontSize: Math.min(width * 0.045, 16),
+    marginBottom: 24,
+    textAlign: 'center',
+    lineHeight: 24,
+  },
+  exitButtons: {
     flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 16,
     width: '100%',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 8,
-    marginBottom: 2,
-    gap: 10,
+  },
+  exitButton: {
+    backgroundColor: '#3a2172',
+    borderRadius: 12,
+    borderWidth: 3,
+    borderColor: '#00fff7',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    minWidth: 100,
+  },
+  exitButtonText: {
+    color: '#00fff7',
+    fontFamily: pixelFont,
+    fontSize: Math.min(width * 0.045, 16),
+    textAlign: 'center',
+  },
+  exitButtonCancel: {
+    backgroundColor: '#3a2172',
+    borderRadius: 12,
+    borderWidth: 3,
+    borderColor: '#00fff7',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    minWidth: 100,
+  },
+  exitButtonCancelText: {
+    color: '#ff2e7e',
+    fontFamily: pixelFont,
+    fontSize: Math.min(width * 0.045, 16),
+    textAlign: 'center',
   },
 }); 

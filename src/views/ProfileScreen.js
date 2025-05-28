@@ -1,5 +1,5 @@
 import React, { useState, useEffect, createContext, useContext, useRef } from 'react';
-import { View, Text, StyleSheet, Image, Dimensions, TouchableOpacity, Modal, TextInput, Pressable, Platform, SafeAreaView, ActivityIndicator, ScrollView, Animated } from 'react-native';
+import { View, Text, StyleSheet, Image, Dimensions, TouchableOpacity, Modal, TextInput, Pressable, Platform, SafeAreaView, ActivityIndicator, ScrollView, Animated, Easing } from 'react-native';
 import RetroButton from '../components/RetroButton';
 import userPinkIcon from '../assets/user-pink.png';
 import { auth, db, storage } from '../firebaseConfig';
@@ -8,6 +8,7 @@ import { ref, uploadBytes, getDownloadURL, getStorage } from 'firebase/storage';
 import * as ImagePicker from 'expo-image-picker';
 import { doc, getDoc, setDoc, increment, updateDoc } from 'firebase/firestore';
 import editarRosaIcon from '../assets/editar_rosa.png';
+import { useFonts } from 'expo-font';
 import {
   screenWidth as width,
   screenHeight as height,
@@ -25,6 +26,9 @@ import { AudioContext } from '../../App';
 import BottomTabBar from '../components/BottomTabBar';
 import { GAME_SCORES, getExpForLevel, SPECIAL_AVATARS } from '../utils/scoreConfig';
 import { checkAndUpdateMissions } from '../utils/missions';
+import { getAuth } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore';
+import { Ionicons } from '@expo/vector-icons';
 
 const pixelFont = 'PressStart2P_400Regular';
 
@@ -55,6 +59,10 @@ export const UserCacheContext = createContext();
 export function useUserCache() { return useContext(UserCacheContext); }
 
 export default function ProfileScreen({ navigation, isTab }) {
+  const [fontsLoaded] = useFonts({
+    'PressStart2P_400Regular': require('../../assets/fonts/PressStart2P-Regular.ttf'),
+  });
+
   const [currentUser, setCurrentUser] = useState(null);
   const [username, setUsername] = useState('');
   const [avatar, setAvatar] = useState(userPinkIcon);
@@ -76,6 +84,10 @@ export default function ProfileScreen({ navigation, isTab }) {
   const { audioOn, toggleAudio } = useContext(AudioContext);
 
   const fadeAnim = useRef(new Animated.Value(1)).current;
+  const slideAnim = useRef(new Animated.Value(1)).current;
+  const glowAnim = useRef(new Animated.Value(0.7)).current;
+  const formFadeAnim = useRef(new Animated.Value(0)).current;
+  const formSlideAnim = useRef(new Animated.Value(1)).current;
 
   const [showAvatarModal, setShowAvatarModal] = useState(false);
   const audioRef = useRef(null);
@@ -89,6 +101,7 @@ export default function ProfileScreen({ navigation, isTab }) {
           let displayName = user.displayName;
           let userLevel = 0;
           let userExp = 0;
+          let avatarSpecial = null;
           // Si no hay nombre en Auth, intentar obtenerlo desde Firestore
           try {
             const userDoc = await getDoc(doc(db, 'users', user.uid));
@@ -97,24 +110,34 @@ export default function ProfileScreen({ navigation, isTab }) {
               displayName = data.displayName || displayName;
               userLevel = data.level ?? 0;
               userExp = data.exp ?? 0;
-              // Nuevo: priorizar avatar especial (string a require)
-              if (data.avatarSpecial) {
-                let specialImg = null;
-                if (data.avatarSpecial === 'hidden.1.jpg') specialImg = require('../assets/hidden.1.jpg');
-                else if (data.avatarSpecial === 'hidden.2.jpg') specialImg = require('../assets/hidden.2.jpg');
-                else if (data.avatarSpecial === 'hidden.3.jpg') specialImg = require('../assets/hidden.3.jpg');
-                if (specialImg) setAvatar(specialImg);
-                else if (user.photoURL) setAvatar({ uri: user.photoURL });
-                else setAvatar(userPinkIcon);
-              } else if (user.photoURL) {
-                setAvatar({ uri: user.photoURL });
-              } else {
-                setAvatar(userPinkIcon);
+              avatarSpecial = data.avatarSpecial || null;
+              // --- Lógica de avatar especial retroactiva ---
+              let newAvatarSpecial = null;
+              if (userLevel >= 20) newAvatarSpecial = 'hidden.3.jpg';
+              else if (userLevel >= 10) newAvatarSpecial = 'hidden.2.jpg';
+              else if (userLevel >= 5) newAvatarSpecial = 'hidden.1.jpg';
+              // Si el usuario no tiene avatar especial o tiene uno de menor nivel, actualizarlo
+              const avatarPriority = { null: 0, 'hidden.1.jpg': 1, 'hidden.2.jpg': 2, 'hidden.3.jpg': 3 };
+              if (newAvatarSpecial && avatarPriority[newAvatarSpecial] > avatarPriority[avatarSpecial]) {
+                await setDoc(doc(db, 'users', user.uid), { avatarSpecial: newAvatarSpecial, photoURL: null }, { merge: true });
+                avatarSpecial = newAvatarSpecial;
               }
-              // Actualizar Auth con el nombre de Firestore
-              if (displayName && user.displayName !== displayName) {
-                await updateProfile(user, { displayName });
-              }
+              // Mostrar el avatar especial si existe
+              let specialImg = null;
+              if (avatarSpecial === 'hidden.1.jpg') specialImg = require('../assets/hidden.1.jpg');
+              else if (avatarSpecial === 'hidden.2.jpg') specialImg = require('../assets/hidden.2.jpg');
+              else if (avatarSpecial === 'hidden.3.jpg') specialImg = require('../assets/hidden.3.jpg');
+              if (specialImg) setAvatar(specialImg);
+              else if (user.photoURL) setAvatar({ uri: user.photoURL });
+              else setAvatar(userPinkIcon);
+            } else if (user.photoURL) {
+              setAvatar({ uri: user.photoURL });
+            } else {
+              setAvatar(userPinkIcon);
+            }
+            // Actualizar Auth con el nombre de Firestore
+            if (displayName && user.displayName !== displayName) {
+              await updateProfile(user, { displayName });
             }
           } catch (firestoreError) {
             console.warn('Error al conectar con Firestore:', firestoreError);
@@ -267,12 +290,12 @@ export default function ProfileScreen({ navigation, isTab }) {
       Animated.timing(fadeAnim, {
         toValue: 0,
         duration: 500,
-        useNativeDriver: true,
+        useNativeDriver: false,
       }),
       Animated.timing(fadeAnim, {
         toValue: 1,
         duration: 500,
-        useNativeDriver: true,
+        useNativeDriver: false,
       }),
     ]).start();
     setAvatar(newAvatar);
@@ -328,6 +351,16 @@ export default function ProfileScreen({ navigation, isTab }) {
     };
   }, [showAvatarModal]);
 
+  if (!fontsLoaded) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#0a0a23' }}>
+        <View style={[styles.root, { justifyContent: 'center', alignItems: 'center' }]}>
+          <ActivityIndicator size="large" color="#00fff7" />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   // Si no hay usuario, mostrar pantalla de carga o nada
   if (!currentUser) {
     return (
@@ -343,9 +376,9 @@ export default function ProfileScreen({ navigation, isTab }) {
     <UserCacheContext.Provider value={userCache}>
       <SafeAreaView style={{ flex: 1, backgroundColor: '#0a0a23' }}>
         <View style={styles.root}>
-          <ScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: 120 }]} showsVerticalScrollIndicator={false}>
+          <View style={styles.content}>
             {/* Título */}
-            <Text style={[styles.title, ...pixelStroke]}>PERFIL DE USUARIO</Text>
+            <Text style={[styles.title, ...pixelStroke, { fontFamily: pixelFont }]}>PERFIL DE USUARIO</Text>
 
             {/* Avatar */}
             <TouchableOpacity activeOpacity={0.8} onPress={() => setShowAvatarModal(true)}>
@@ -356,14 +389,14 @@ export default function ProfileScreen({ navigation, isTab }) {
 
             {/* Nombre de usuario */}
             <View style={styles.usernameBox}>
-              <Text style={[styles.username, ...pixelStroke]}>{username}</Text>
+              <Text style={[styles.username, ...pixelStroke, { fontFamily: pixelFont }]}>{username}</Text>
             </View>
 
             {/* Nivel y barra de experiencia */}
             <View style={styles.levelBox}>
               <View style={styles.levelRow}>
-                <Text style={styles.levelText}>Nivel {level}</Text>
-                <Text style={styles.expText}>Exp {exp}/{expMax}</Text>
+                <Text style={[styles.levelText, { fontFamily: pixelFont }]}>Nivel {level}</Text>
+                <Text style={[styles.expText, { fontFamily: pixelFont }]}>Exp {exp}/{expMax}</Text>
               </View>
               <View style={styles.expBarBg}>
                 <View style={[styles.expBarFill, { width: `${(exp/expMax)*100}%` }]} />
@@ -404,94 +437,12 @@ export default function ProfileScreen({ navigation, isTab }) {
                     setCurrentUser(null);
                   }
                 }} 
-                style={[styles.logoutBtn, { alignSelf: 'center', width: '90%', marginTop: 18 }]}
+                style={[styles.logoutBtn, { alignSelf: 'center', width: '90%', marginTop: 12 }]}
                 textStyle={styles.logoutBtnText}
               />
             )}
+          </View>
 
-            {/* Loading modal al cerrar sesión */}
-            <Modal
-              visible={loggingOut}
-              transparent
-              animationType="fade"
-            >
-              <View style={styles.loadingOverlay}>
-                <View style={styles.loadingBox}>
-                  <Text style={styles.loadingText}>Cerrando sesión...</Text>
-                  <View style={{ marginTop: 18 }}>
-                    <ActivityIndicator size="large" color="#ff2e7e" />
-                  </View>
-                </View>
-              </View>
-            </Modal>
-
-            {/* Modal edición perfil */}
-            <Modal
-              visible={modalVisible}
-              animationType="fade"
-              transparent
-              onRequestClose={() => setModalVisible(false)}
-            >
-              <View style={styles.modalOverlay}>
-                <View style={styles.modalBox}>
-                  {(!username || !avatar) ? (
-                    <View style={{ alignItems: 'center', justifyContent: 'center', height: 120 }}>
-                      <ActivityIndicator size="large" color="#00fff7" />
-                      <Text style={{ color: '#00fff7', fontFamily: pixelFont, marginTop: 18 }}>Cargando perfil...</Text>
-                    </View>
-                  ) : (
-                    <>
-                      <Text style={[styles.modalTitle, ...pixelStroke]}>Editar perfil</Text>
-                      <View style={styles.modalAvatarRow}>
-                        {avatarOptions.map((img, i) => (
-                          <Pressable key={i} onPress={() => setEditAvatar(img)} style={[styles.modalAvatarOption, editAvatar === img && styles.modalAvatarActive]}> 
-                            <Image source={img} style={styles.modalAvatarImg} resizeMode="contain" />
-                          </Pressable>
-                        ))}
-                      </View>
-                      <TextInput
-                        style={styles.modalInput}
-                        value={editName}
-                        onChangeText={setEditName}
-                        maxLength={16}
-                        placeholder="Nombre de usuario"
-                        placeholderTextColor="#00fff7"
-                        autoFocus
-                      />
-                      <TouchableOpacity onPress={pickImage} style={styles.editAvatarBtn}>
-                        <Text style={styles.editAvatarBtnText}>Elegir foto de galería</Text>
-                      </TouchableOpacity>
-                      <View style={styles.modalBtnRowColumn}>
-                        <RetroButton title="Guardar" onPress={saveEdit} />
-                        <RetroButton title="Cancelar" onPress={() => setModalVisible(false)} style={styles.cancelBtn} textStyle={styles.cancelBtnText} />
-                      </View>
-                    </>
-                  )}
-                </View>
-              </View>
-            </Modal>
-
-            {/* Modal para ver avatar grande */}
-            <Modal
-              visible={showAvatarModal}
-              transparent
-              animationType="fade"
-              onRequestClose={() => setShowAvatarModal(false)}
-            >
-              <View style={styles.modalOverlay}>
-                <View style={{ alignItems: 'center', justifyContent: 'center' }}>
-                  <Image source={avatar} style={{ width: 220, height: 220, borderRadius: 24, borderWidth: 4, borderColor: '#00fff7', backgroundColor: '#23233a' }} resizeMode="contain" />
-                  {/* Audio para web */}
-                  {Platform.OS === 'web' && (
-                    <audio ref={audioElementRef} src={require('../assets/audio-papi.mp3')} />
-                  )}
-                  <TouchableOpacity onPress={() => setShowAvatarModal(false)} style={{ marginTop: 24, backgroundColor: '#ff2e7e', borderRadius: 12, paddingVertical: 10, paddingHorizontal: 32 }}>
-                    <Text style={{ color: '#fff', fontFamily: pixelFont, fontSize: 16 }}>Cerrar</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </Modal>
-          </ScrollView>
           {/* Menú inferior siempre visible */}
           {(!isTab) && (
             <BottomTabBar
@@ -548,19 +499,26 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#0a0a23',
     alignItems: 'center',
-    justifyContent: 'flex-start',
-    paddingTop: height * 0.04,
-    paddingBottom: 0,
+    justifyContent: 'space-between',
     width: '100%',
     alignSelf: 'center',
   },
+  content: {
+    flex: 1,
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    paddingTop: height * 0.02,
+  },
   title: {
     color: '#fff',
-    fontFamily: pixelFont,
-    fontSize: Math.min(width * 0.07, 22),
-    letterSpacing: 2,
-    marginBottom: height * 0.025,
+    fontSize: scaleFont(24),
+    marginBottom: scaleDimension(18),
     textAlign: 'center',
+    textShadowColor: '#00fff7',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: scaleDimension(12),
+    fontFamily: pixelFont,
   },
   avatarBox: {
     borderWidth: width * 0.015,
@@ -569,37 +527,37 @@ const styles = StyleSheet.create({
     padding: width * 0.02,
     backgroundColor: '#23233a',
     alignSelf: 'center',
-    marginBottom: height * 0.018,
+    marginBottom: height * 0.015,
     shadowColor: '#00fff7',
     shadowOpacity: 0.45,
     shadowRadius: 16,
     shadowOffset: { width: 0, height: 0 },
   },
   avatar: {
-    width: Math.min(width * 0.28, 80),
-    height: Math.min(width * 0.28, 80),
+    width: Math.min(width * 0.3, 100),
+    height: Math.min(width * 0.3, 100),
     borderRadius: width * 0.06,
   },
   usernameBox: {
     alignSelf: 'center',
-    marginVertical: height * 0.012,
+    marginVertical: height * 0.01,
     borderWidth: width * 0.01,
     borderColor: '#00fff7',
     borderRadius: width * 0.03,
-    paddingHorizontal: width * 0.04,
+    paddingHorizontal: width * 0.05,
     paddingVertical: height * 0.01,
     backgroundColor: '#23233a',
   },
   username: {
     color: '#00fff7',
-    fontFamily: pixelFont,
-    fontSize: Math.min(width * 0.055, 18),
+    fontSize: scaleFont(18),
     textAlign: 'center',
+    fontFamily: pixelFont,
   },
   levelBox: {
     width: '90%',
     alignSelf: 'center',
-    marginVertical: height * 0.018,
+    marginVertical: height * 0.015,
     borderWidth: width * 0.01,
     borderColor: '#00fff7',
     borderRadius: width * 0.04,
@@ -614,17 +572,17 @@ const styles = StyleSheet.create({
   },
   levelText: {
     color: '#ff2e7e',
+    fontSize: scaleFont(14),
     fontFamily: pixelFont,
-    fontSize: Math.min(width * 0.045, 14),
   },
   expText: {
     color: '#ff2e7e',
+    fontSize: scaleFont(12),
     fontFamily: pixelFont,
-    fontSize: Math.min(width * 0.035, 12),
   },
   expBarBg: {
     width: '100%',
-    height: Math.max(10, height * 0.015),
+    height: Math.max(10, height * 0.012),
     backgroundColor: '#101926',
     borderRadius: width * 0.03,
     overflow: 'hidden',
@@ -639,20 +597,20 @@ const styles = StyleSheet.create({
   editBtn: {
     width: '90%',
     alignSelf: 'center',
-    marginTop: height * 0.012,
-    marginBottom: height * 0.012,
+    marginTop: height * 0.01,
+    marginBottom: height * 0.01,
     borderWidth: width * 0.01,
     borderColor: '#00fff7',
     borderRadius: width * 0.03,
     backgroundColor: '#101926',
-    paddingVertical: height * 0.018,
+    paddingVertical: height * 0.012,
     paddingHorizontal: width * 0.04,
   },
   editBtnText: {
     color: '#fff',
-    fontFamily: pixelFont,
-    fontSize: Math.min(width * 0.038, 13),
+    fontSize: scaleFont(13),
     textAlign: 'center',
+    fontFamily: pixelFont,
   },
   bottomTab: {
     flexDirection: 'row',
@@ -712,10 +670,10 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     color: '#ff2e7e',
-    fontFamily: pixelFont,
-    fontSize: Math.min(width * 0.055, 22),
+    fontSize: scaleFont(22),
     marginBottom: 18,
     textAlign: 'center',
+    fontFamily: pixelFont,
   },
   modalAvatarRow: {
     flexDirection: 'row',
@@ -752,12 +710,12 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     backgroundColor: '#101926',
     color: '#00fff7',
-    fontFamily: pixelFont,
-    fontSize: Math.min(width * 0.045, 18),
+    fontSize: scaleFont(18),
     paddingVertical: 10,
     paddingHorizontal: 12,
     marginBottom: 18,
     textAlign: 'center',
+    fontFamily: pixelFont,
   },
   modalBtnRowColumn: {
     flexDirection: 'column',
@@ -778,9 +736,9 @@ const styles = StyleSheet.create({
   },
   editAvatarBtnText: {
     color: '#00fff7',
-    fontFamily: pixelFont,
-    fontSize: Math.min(width * 0.038, 16),
+    fontSize: scaleFont(16),
     textAlign: 'center',
+    fontFamily: pixelFont,
   },
   cancelBtn: {
     backgroundColor: '#ff2e7e',
@@ -789,9 +747,9 @@ const styles = StyleSheet.create({
   },
   cancelBtnText: {
     color: '#fff',
-    fontFamily: pixelFont,
-    fontSize: Math.min(width * 0.038, 16),
+    fontSize: scaleFont(16),
     textAlign: 'center',
+    fontFamily: pixelFont,
   },
   logoutBtn: {
     backgroundColor: '#ff2e7e',
@@ -800,9 +758,10 @@ const styles = StyleSheet.create({
   },
   logoutBtnText: {
     color: '#fff',
-    fontFamily: pixelFont,
-    fontSize: Math.min(width * 0.038, 16),
+    fontSize: scaleFont(16),
     textAlign: 'center',
+    fontFamily: 'PressStart2P_400Regular',
+    letterSpacing: 2,
   },
   loadingOverlay: {
     flex: 1,
@@ -824,10 +783,10 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     color: '#ff2e7e',
-    fontFamily: pixelFont,
-    fontSize: Math.min(width * 0.045, 18),
+    fontSize: scaleFont(18),
     textAlign: 'center',
     marginBottom: 8,
+    fontFamily: pixelFont,
   },
   editIcon: {
     width: 28,
@@ -877,7 +836,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    paddingBottom: height * 0.04,
+    paddingBottom: height * 0.02,
   },
   audioContainer: {
     width: '100%',
@@ -900,8 +859,7 @@ const styles = StyleSheet.create({
   },
   audioText: {
     color: '#fff',
-    fontFamily: pixelFont,
-    fontSize: 20,
+    fontSize: scaleFont(20),
   },
   audioIcon: {
     width: 32,

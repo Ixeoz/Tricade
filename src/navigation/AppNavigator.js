@@ -1,5 +1,4 @@
 import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import HomeScreen from '../views/HomeScreen';
 import LoadingScreen from '../views/LoadingScreen';
@@ -23,40 +22,38 @@ import DuosGameScreen from '../views/DuosGameScreen';
 const Stack = createStackNavigator();
 
 const AppNavigator = ({ user }) => (
-  <NavigationContainer>
-    <Stack.Navigator
-      screenOptions={{
-        headerShown: false,
-        cardStyle: { backgroundColor: '#0a0a23' }
-      }}
-      initialRouteName={user ? 'Home' : 'Login'}
-    >
-      {/* Auth screens - always available */}
-      <Stack.Screen name="Login" component={LoginScreen} />
-      <Stack.Screen name="Register" component={RegisterScreen} />
-      <Stack.Screen name="Verification" component={VerificationScreen} />
-      <Stack.Screen name="EmailValidator" component={EmailValidatorScreen} />
-      <Stack.Screen name="WaitingVerification" component={WaitingVerificationScreen} />
-      <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
+  <Stack.Navigator
+    screenOptions={{
+      headerShown: false,
+      cardStyle: { backgroundColor: '#0a0a23' }
+    }}
+    initialRouteName={user ? 'Home' : 'Login'}
+  >
+    {/* Auth screens - always available */}
+    <Stack.Screen name="Login" component={LoginScreen} />
+    <Stack.Screen name="Register" component={RegisterScreen} />
+    <Stack.Screen name="Verification" component={VerificationScreen} />
+    <Stack.Screen name="EmailValidator" component={EmailValidatorScreen} />
+    <Stack.Screen name="WaitingVerification" component={WaitingVerificationScreen} />
+    <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
 
-      {/* Game screens - only available when user is logged in */}
-      {user && (
-        <>
-          <Stack.Screen name="Games" component={GamesScreen} />
-          <Stack.Screen name="Home" component={HomeScreen} />
-          <Stack.Screen name="Profile" component={ProfileScreen} />
-          <Stack.Screen name="TrikiDetailScreen" component={TrikiDetailScreen} />
-          <Stack.Screen name="TrikiGameScreen" component={TrikiGameScreen} />
-          <Stack.Screen name="SnakeDetailScreen" component={SnakeDetailScreen} />
-          <Stack.Screen name="SnakeGameScreen" component={SnakeGameScreen} />
-          <Stack.Screen name="DuosDetailScreen" component={DuosDetailScreen} />
-          <Stack.Screen name="DuosLoading" component={DuosLoadingScreen} />
-          <Stack.Screen name="DuosGame" component={DuosGameScreen} />
-        </>
-      )}
-      {/* <Stack.Screen name="Games" component={GamesScreen} /> */}
-    </Stack.Navigator>
-  </NavigationContainer>
+    {/* Game screens - only available when user is logged in */}
+    {user && (
+      <>
+        <Stack.Screen name="Games" component={GamesScreen} />
+        <Stack.Screen name="Home" component={HomeScreen} />
+        <Stack.Screen name="Profile" component={ProfileScreen} />
+        <Stack.Screen name="TrikiDetailScreen" component={TrikiDetailScreen} />
+        <Stack.Screen name="TrikiGameScreen" component={TrikiGameScreen} />
+        <Stack.Screen name="SnakeDetailScreen" component={SnakeDetailScreen} />
+        <Stack.Screen name="SnakeGameScreen" component={SnakeGameScreen} />
+        <Stack.Screen name="DuosDetailScreen" component={DuosDetailScreen} />
+        <Stack.Screen name="DuosLoading" component={DuosLoadingScreen} />
+        <Stack.Screen name="DuosGame" component={DuosGameScreen} />
+      </>
+    )}
+    {/* <Stack.Screen name="Games" component={GamesScreen} /> */}
+  </Stack.Navigator>
 );
 
 export default AppNavigator; 

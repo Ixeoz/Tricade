@@ -92,7 +92,7 @@ export default function RegisterScreen({ navigation }) {
               </View>
               <View style={[styles.inputBox, focusInput === 'user' && styles.inputBoxGlow]}> 
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, { fontFamily: 'PressStart2P_400Regular' }]}
                   value={username}
                   onChangeText={t => { setUsername(t); setError(''); }}
                   placeholder="Usuario"
@@ -105,7 +105,7 @@ export default function RegisterScreen({ navigation }) {
               </View>
               <View style={[styles.inputBox, focusInput === 'pass1' && styles.inputBoxGlow]}> 
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, { fontFamily: 'PressStart2P_400Regular' }]}
                   value={password}
                   onChangeText={t => { setPassword(t); setError(''); }}
                   placeholder="Contraseña"
@@ -122,7 +122,7 @@ export default function RegisterScreen({ navigation }) {
                 error === 'Las contraseñas no coinciden' && styles.inputBoxError
               ]}> 
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, { fontFamily: 'PressStart2P_400Regular' }]}
                   value={password2}
                   onChangeText={t => { setPassword2(t); setError(''); }}
                   placeholder="Confirmar"
@@ -138,12 +138,13 @@ export default function RegisterScreen({ navigation }) {
                   <View key={i} style={[styles.pixelBarChunk, i % 2 === 0 ? styles.pixelBarChunkBlue : styles.pixelBarChunkPink]} />
                 ))}
               </View>
-              {error ? <Text style={styles.errorMsg}>{error}</Text> : null}
+              {error ? <Text style={[styles.errorMsg, { fontFamily: 'PressStart2P_400Regular' }]}>{error}</Text> : null}
               <RetroButton
-                title="Crear cuenta"
+                title="Registrarse"
                 onPress={handleRegister}
                 style={[styles.glowBtn, username.trim() && password.trim() && password2.trim() ? undefined : styles.disabledBtn]}
                 disabled={!username.trim() || !password.trim() || !password2.trim()}
+                textStyle={{ fontFamily: 'PressStart2P_400Regular' }}
               />
               <Pressable
                 style={({ pressed }) => [styles.loginBtn, loginPressed || pressed ? styles.loginBtnActive : null]}
@@ -151,7 +152,7 @@ export default function RegisterScreen({ navigation }) {
                 onPressOut={() => setLoginPressed(false)}
                 onPress={() => navigation.replace('Login')}
               >
-                <Text style={styles.loginBtnText}>Ya tengo cuenta</Text>
+                <Text style={[styles.loginBtnText, { fontFamily: 'PressStart2P_400Regular' }]}>Ya tengo cuenta</Text>
               </Pressable>
             </View>
           </ScrollView>

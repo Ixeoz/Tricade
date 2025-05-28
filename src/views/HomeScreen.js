@@ -13,7 +13,7 @@ import {
   getResponsiveDimension
 } from '../utils/dimensions';
 
-const pixelFont = 'PressStart2P_400Regular';
+const pixelFont = 'PixelFont';
 
 // Borde pixelado grueso para texto
 const pixelStroke = [
@@ -84,14 +84,14 @@ const HomeScreen = ({ navigation }) => {
                     styles.pixelText,
                     styles.tri,
                     styles.title,
-                    ...pixelStroke,
+                    ...pixelStroke
                   ]}>TRI</Text>
                   {/* CADE */}
                   <Text style={[
                     styles.pixelText,
                     styles.cade,
                     styles.title,
-                    ...pixelStroke,
+                    ...pixelStroke
                   ]}>CADE</Text>
                 </View>
                 {/* Centro de juegos */}
@@ -253,6 +253,7 @@ const styles = StyleSheet.create({
     fontSize: scaleFont(24),
     color: '#fff',
     marginBottom: SPACING.lg,
+    fontFamily: 'PressStart2P_400Regular',
   },
   title: {
     fontSize: scaleFont(38),

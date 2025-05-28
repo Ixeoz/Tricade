@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Alert, Animated, Modal } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Alert, Animated, Modal, Platform } from 'react-native';
 import { auth, db } from '../firebaseConfig';
 import { doc, getDoc, setDoc, increment, updateDoc } from 'firebase/firestore';
 import {
@@ -156,6 +156,7 @@ export default function SnakeGameScreen({ navigation }) {
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const shakeAnim = useRef(new Animated.Value(0)).current;
+  const [showGameOverModal, setShowGameOverModal] = useState(false);
 
   const resetGame = () => {
     setSnake([...INIT_SNAKE]);
@@ -211,8 +212,12 @@ export default function SnakeGameScreen({ navigation }) {
 
   const handleGameOver = () => {
     setGameOver(true);
-    updateStatsInFirestore(score);
-    
+    setShowGameOverModal(true);
+    try {
+      updateStatsInFirestore(score);
+    } catch (e) {
+      console.error('Error en handleGameOver:', e);
+    }
     // Game over animation
     Animated.sequence([
       Animated.timing(fadeAnim, {
@@ -236,12 +241,6 @@ export default function SnakeGameScreen({ navigation }) {
         useNativeDriver: true,
       })
     ]).start();
-
-    Alert.alert(
-      'Game Over',
-      `Comidas: ${foodsEaten}\nPuntos: ${score}`,
-      [{ text: 'Jugar de nuevo', onPress: resetGame }]
-    );
   };
 
   const moveSnake = () => {
@@ -287,42 +286,43 @@ export default function SnakeGameScreen({ navigation }) {
   };
 
   useEffect(() => {
-    const handleKeyPress = (e) => {
-      if (gameOver) return;
+    if (Platform.OS === 'web') {
+      const handleKeyPress = (e) => {
+        if (gameOver) return;
 
-      const key = e.key.toLowerCase();
-      let newDirection = null;
+        const key = e.key.toLowerCase();
+        let newDirection = null;
 
-      switch (key) {
-        case 'arrowup':
-        case 'w':
-          newDirection = 'up';
-          break;
-        case 'arrowdown':
-        case 's':
-          newDirection = 'down';
-          break;
-        case 'arrowleft':
-        case 'a':
-          newDirection = 'left';
-          break;
-        case 'arrowright':
-        case 'd':
-          newDirection = 'right';
-          break;
-        case ' ':
-          setIsPaused(prev => !prev);
-          return;
-      }
+        switch (key) {
+          case 'arrowup':
+          case 'w':
+            newDirection = 'up';
+            break;
+          case 'arrowdown':
+          case 's':
+            newDirection = 'down';
+            break;
+          case 'arrowleft':
+          case 'a':
+            newDirection = 'left';
+            break;
+          case 'arrowright':
+          case 'd':
+            newDirection = 'right';
+            break;
+          case ' ':
+            setIsPaused(prev => !prev);
+            return;
+        }
 
-      if (newDirection && OPPOSITE_DIRECTIONS[newDirection] !== lastDirectionRef.current) {
-        lastDirectionRef.current = newDirection;
-        setDirection(newDirection);
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyPress);
-    return () => window.removeEventListener('keydown', handleKeyPress);
+        if (newDirection && OPPOSITE_DIRECTIONS[newDirection] !== lastDirectionRef.current) {
+          lastDirectionRef.current = newDirection;
+          setDirection(newDirection);
+        }
+      };
+      window.addEventListener('keydown', handleKeyPress);
+      return () => window.removeEventListener('keydown', handleKeyPress);
+    }
   }, [gameOver]);
 
   useEffect(() => {
@@ -547,6 +547,31 @@ export default function SnakeGameScreen({ navigation }) {
           </Text>
         </TouchableOpacity>
       </View>
+
+      {/* Game Over Modal personalizado */}
+      <Modal
+        visible={showGameOverModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowGameOverModal(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: 'rgba(10,10,35,0.92)', justifyContent: 'center', alignItems: 'center' }}>
+          <View style={styles.gameOverModal}>
+            <Text style={styles.gameOverTitle}>GAME OVER</Text>
+            <View style={styles.gameOverStatRow}>
+              <Text style={styles.gameOverStatLabel}>Comidas:</Text>
+              <Text style={styles.gameOverStatValueBlue}>{foodsEaten}</Text>
+            </View>
+            <View style={styles.gameOverStatRow}>
+              <Text style={styles.gameOverStatLabel}>Puntos:</Text>
+              <Text style={styles.gameOverStatValuePink}>{score}</Text>
+            </View>
+            <TouchableOpacity style={styles.gameOverBtn} onPress={() => { setShowGameOverModal(false); resetGame(); }}>
+              <Text style={styles.gameOverBtnText}>JUGAR DE NUEVO</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -863,5 +888,88 @@ const styles = StyleSheet.create({
     fontFamily: pixelFont,
     letterSpacing: 2,
     marginVertical: 2,
+  },
+  gameOverModal: {
+    backgroundColor: '#0a0a23',
+    borderRadius: 24,
+    borderWidth: 6,
+    borderColor: '#00fff7',
+    paddingVertical: 38,
+    paddingHorizontal: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#00fff7',
+    shadowOpacity: 0.45,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 0 },
+    width: '88%',
+    alignSelf: 'center',
+  },
+  gameOverTitle: {
+    color: '#ff2e7e',
+    fontFamily: pixelFont,
+    fontSize: Math.min(width * 0.13, 44),
+    marginBottom: 22,
+    textAlign: 'center',
+    letterSpacing: 2,
+    textShadowColor: '#000',
+    textShadowOffset: { width: 3, height: 3 },
+    textShadowRadius: 0,
+  },
+  gameOverStatRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 10,
+    gap: 18,
+  },
+  gameOverStatLabel: {
+    fontFamily: pixelFont,
+    fontSize: Math.min(width * 0.055, 18),
+    color: '#fff',
+    textShadowColor: '#000',
+    textShadowOffset: { width: 2, height: 2 },
+    textShadowRadius: 0,
+    marginRight: 6,
+  },
+  gameOverStatValueBlue: {
+    color: '#00fff7',
+    fontFamily: pixelFont,
+    fontSize: Math.min(width * 0.055, 18),
+    textShadowColor: '#000',
+    textShadowOffset: { width: 2, height: 2 },
+    textShadowRadius: 0,
+  },
+  gameOverStatValuePink: {
+    color: '#ff2e7e',
+    fontFamily: pixelFont,
+    fontSize: Math.min(width * 0.055, 18),
+    textShadowColor: '#000',
+    textShadowOffset: { width: 2, height: 2 },
+    textShadowRadius: 0,
+  },
+  gameOverBtn: {
+    backgroundColor: '#3a2172',
+    borderRadius: 16,
+    borderWidth: 4,
+    borderColor: '#ff2e7e',
+    paddingVertical: 16,
+    paddingHorizontal: 38,
+    marginTop: 28,
+    alignSelf: 'center',
+    shadowColor: '#ff2e7e',
+    shadowOpacity: 0.45,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 0 },
+  },
+  gameOverBtnText: {
+    color: '#00fff7',
+    fontFamily: pixelFont,
+    fontSize: Math.min(width * 0.055, 18),
+    textAlign: 'center',
+    letterSpacing: 1,
+    textShadowColor: '#000',
+    textShadowOffset: { width: 2, height: 2 },
+    textShadowRadius: 0,
   },
 }); 

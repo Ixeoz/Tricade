@@ -73,11 +73,11 @@ export default function SnakeDetailScreen({ navigation }) {
       <View style={styles.cornerDotBR} />
 
       <TouchableOpacity 
-        style={styles.backButton} 
+        style={styles.backBtn} 
         onPress={() => navigation.goBack()}
       >
         <View style={styles.backBox}>
-          <Text style={styles.backText}>←</Text>
+          <Text style={styles.backArrow}>←</Text>
         </View>
       </TouchableOpacity>
 
@@ -255,35 +255,35 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     zIndex: 2,
   },
-  backButton: {
+  backBtn: {
     position: 'absolute',
-    top: height * 0.025,
+    top: height * 0.055,
     left: width * 0.04,
     zIndex: 10,
   },
   backBox: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
+    width: 28,
+    height: 28,
+    borderRadius: 7,
     backgroundColor: '#3a2172',
-    borderWidth: 2,
+    borderWidth: 1.5,
     borderColor: '#ff2e7e',
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#ff2e7e',
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
+    shadowOpacity: 0.18,
+    shadowRadius: 3,
     shadowOffset: { width: 0, height: 0 },
   },
-  backText: {
+  backArrow: {
     color: '#ff2e7e',
     fontFamily: pixelFont,
-    fontSize: Math.min(width * 0.06, 22),
-    marginLeft: 2,
-    marginTop: -2,
+    fontSize: Math.min(width * 0.045, 16),
+    marginLeft: 1,
+    marginTop: -1,
   },
   logoBoxWrapper: {
-    marginTop: height * 0.03,
+    marginTop: height * 0.08,
     marginBottom: height * 0.025,
     alignSelf: 'center',
     position: 'relative',

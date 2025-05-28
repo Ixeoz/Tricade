@@ -71,11 +71,11 @@ export default function DuosDetailScreen({ navigation }) {
       <View style={styles.cornerDotBR} />
 
       <TouchableOpacity 
-        style={styles.backButton} 
+        style={styles.backBtn} 
         onPress={() => navigation.navigate('Games')}
       >
         <View style={styles.backBox}>
-          <Text style={styles.backText}>←</Text>
+          <Text style={styles.backArrow}>←</Text>
         </View>
       </TouchableOpacity>
 
@@ -281,35 +281,35 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     zIndex: 2,
   },
-  backButton: {
+  backBtn: {
     position: 'absolute',
-    top: height * 0.025,
+    top: height * 0.055,
     left: width * 0.04,
     zIndex: 10,
   },
   backBox: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
+    width: 28,
+    height: 28,
+    borderRadius: 7,
     backgroundColor: '#3a2172',
-    borderWidth: 2,
+    borderWidth: 1.5,
     borderColor: '#ff2e7e',
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#ff2e7e',
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
+    shadowOpacity: 0.18,
+    shadowRadius: 3,
     shadowOffset: { width: 0, height: 0 },
   },
-  backText: {
+  backArrow: {
     color: '#ff2e7e',
     fontFamily: pixelFont,
-    fontSize: Math.min(width * 0.06, 22),
-    marginLeft: 2,
-    marginTop: -2,
+    fontSize: Math.min(width * 0.045, 16),
+    marginLeft: 1,
+    marginTop: -1,
   },
   logoBoxWrapper: {
-    marginTop: height * 0.03,
+    marginTop: height * 0.08,
     marginBottom: height * 0.025,
     alignSelf: 'center',
     position: 'relative',
@@ -359,9 +359,9 @@ const styles = StyleSheet.create({
     borderWidth: 5,
     borderColor: '#00fff7',
     borderRadius: 22,
-    padding: 8,
+    padding: 6,
     backgroundColor: '#23233a',
-    marginBottom: height * 0.025,
+    marginBottom: height * 0.018,
     alignSelf: 'center',
     zIndex: 1,
   },
@@ -370,11 +370,11 @@ const styles = StyleSheet.create({
     borderColor: '#ff2e7e',
     borderRadius: 16,
     backgroundColor: '#101926',
-    paddingVertical: height * 0.025,
+    paddingVertical: height * 0.018,
     paddingHorizontal: width * 0.04,
     alignItems: 'center',
-    minWidth: 120,
-    minHeight: 80,
+    minWidth: 100,
+    minHeight: 70,
   },
   centerText: {
     color: '#00fff7',
@@ -384,9 +384,9 @@ const styles = StyleSheet.create({
   },
   statsBox: {
     width: '92%',
-    marginBottom: height * 0.018,
+    marginBottom: height * 0.008,
     marginTop: height * 0.01,
-    gap: height * 0.012,
+    gap: height * 0.008,
   },
   statRow: {
     flexDirection: 'row',
@@ -396,7 +396,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 3,
     borderColor: '#00fff7',
-    paddingVertical: height * 0.018,
+    paddingVertical: height * 0.012,
     paddingHorizontal: width * 0.06,
     marginBottom: 0,
     shadowColor: '#00fff7',
@@ -430,9 +430,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   symbolSmall: {
-    width: Math.min(width * 0.21, 72),
-    height: Math.min(width * 0.21, 72),
+    width: Math.min(width * 0.18, 65),
+    height: Math.min(width * 0.18, 65),
     marginHorizontal: 18,
+    marginBottom: height * 0.008,
     shadowColor: '#7d2fff',
     shadowOpacity: 0.18,
     shadowRadius: 6,
@@ -445,9 +446,9 @@ const styles = StyleSheet.create({
     borderWidth: 4,
     borderColor: '#00fff7',
     borderRadius: 16,
-    paddingVertical: height * 0.028,
+    paddingVertical: height * 0.022,
     marginTop: height * 0.01,
-    marginBottom: height * 0.04,
+    marginBottom: height * 0.025,
     shadowColor: '#00fff7',
     shadowOpacity: 0.25,
     shadowRadius: 10,

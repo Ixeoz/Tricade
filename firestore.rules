@@ -2,18 +2,36 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Permitir leer (consultar) usuarios por displayName o email para login
     match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      // Permitir leer cualquier usuario (solo lectura, no escritura)
+      allow read: if true;
       
-      // Permitir acceso a la subcolección trikiStats
+      // Permitir crear usuario inicial sin autenticación
+      allow create: if true;
+      
+      // Permitir actualizar solo al usuario autenticado
+      allow update: if request.auth != null && request.auth.uid == userId;
+      
+      // Permitir eliminar solo al usuario autenticado
+      allow delete: if request.auth != null && request.auth.uid == userId;
+
+      // Subcolecciones protegidas: solo el usuario autenticado puede leer/escribir
       match /trikiStats/{document=**} {
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }
-      // Permitir acceso a la subcolección snakeStats
       match /snakeStats/{document=**} {
         allow read, write: if request.auth != null && request.auth.uid == userId;
       }
+      match /trophies/{document=**} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+      match /{collection}/{document=**} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
     }
+
+    // Denegar acceso a todo lo demás
     match /{document=**} {
       allow read, write: if false;
     }

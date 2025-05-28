@@ -1,7 +1,11 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, SafeAreaView } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, ActivityIndicator, SafeAreaView, Animated, Easing, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { reload } from 'firebase/auth';
+import { getAuth, reload, sendEmailVerification } from 'firebase/auth';
+import { getFirestore, doc, getDoc } from 'firebase/firestore';
+import { setDoc } from 'firebase/firestore';
+import NetInfo from '@react-native-community/netinfo';
+import RetroButton from '../components/RetroButton';
 import {
   screenWidth as width,
   screenHeight as height,
@@ -13,69 +17,201 @@ import {
   scaleFont,
   getResponsiveDimension
 } from '../utils/dimensions';
-import { getFirestore } from 'firebase/firestore';
-import { setDoc, doc } from 'firebase/firestore';
 
 const pixelFont = 'PressStart2P_400Regular';
 
 export default function WaitingVerificationScreen({ route, navigation }) {
-  const { firebaseUser } = route.params;
-  const [error, setError] = useState(null);
-  const [isChecking, setIsChecking] = useState(true);
+  const { userId, username, email } = route.params;
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [isConnected, setIsConnected] = useState(true);
+  const auth = getAuth();
+  const db = getFirestore();
+
+  // Animaciones
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
+  const glowAnim = useRef(new Animated.Value(0.7)).current;
+
+  useEffect(() => {
+    const checkConnection = async () => {
+      try {
+        const netInfo = await NetInfo.fetch();
+        setIsConnected(netInfo.isConnected);
+        if (!netInfo.isConnected) {
+          setError('No hay conexión a internet. Por favor, verifica tu conexión.');
+        }
+      } catch (error) {
+        console.error('Error checking connection:', error);
+        setIsConnected(false);
+        setError('Error al verificar la conexión a internet.');
+      }
+    };
+
+    const unsubscribe = NetInfo.addEventListener(state => {
+      setIsConnected(state.isConnected);
+      if (!state.isConnected) {
+        setError('No hay conexión a internet. Por favor, verifica tu conexión.');
+      } else {
+        setError('');
+      }
+    });
+
+    checkConnection();
+
+    return () => {
+      unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    let fadeAnimation = null;
+    let slideAnimation = null;
+    let glowAnimation = null;
+
+    const startAnimations = () => {
+      fadeAnimation = Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 700,
+        useNativeDriver: true,
+      });
+
+      slideAnimation = Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 700,
+        easing: Easing.out(Easing.exp),
+        useNativeDriver: true,
+      });
+
+      glowAnimation = Animated.loop(
+        Animated.sequence([
+          Animated.timing(glowAnim, {
+            toValue: 1,
+            duration: 1200,
+            useNativeDriver: false,
+          }),
+          Animated.timing(glowAnim, {
+            toValue: 0.7,
+            duration: 1200,
+            useNativeDriver: false,
+          }),
+        ])
+      );
+
+      Animated.parallel([fadeAnimation, slideAnimation]).start();
+      glowAnimation.start();
+    };
+
+    startAnimations();
+
+    return () => {
+      if (fadeAnimation) fadeAnimation.stop();
+      if (slideAnimation) slideAnimation.stop();
+      if (glowAnimation) glowAnimation.stop();
+    };
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
+    let timeoutId;
+
     const checkVerification = async () => {
+      if (!isConnected) {
+        console.log('[WaitingVerificationScreen] No hay conexión a internet');
+        return;
+      }
+
       try {
-        setIsChecking(true);
-        setError(null);
-        
-        // Reload user to get latest verification status
-        await reload(firebaseUser);
-        
-        if (firebaseUser.emailVerified) {
-          try {
-            // Update verification status in Firestore
-            const db = getFirestore();
-            await setDoc(doc(db, 'users', firebaseUser.uid), {
-              emailVerified: true,
-              lastVerifiedAt: new Date().toISOString()
-            }, { merge: true });
-            
-            if (isMounted) {
-              navigation.replace('Home');
-            }
-          } catch (firestoreError) {
-            console.error('Error updating Firestore:', firestoreError);
-            if (isMounted) {
-              setError('Error al actualizar el estado de verificación. Por favor, intenta iniciar sesión nuevamente.');
-            }
+        console.log('[WaitingVerificationScreen] Verificando estado...');
+        const user = auth.currentUser;
+        if (!user) {
+          throw new Error('Usuario no encontrado');
+        }
+
+        await reload(user);
+        console.log('[WaitingVerificationScreen] Usuario recargado');
+
+        if (user.emailVerified) {
+          console.log('[WaitingVerificationScreen] Email verificado');
+          
+          // Crear el usuario final en Firestore
+          await setDoc(doc(db, 'users', user.uid), {
+            uid: user.uid,
+            displayName: username,
+            email: email,
+            photoURL: null,
+            createdAt: new Date().toISOString(),
+            level: 0,
+            exp: 0,
+            emailVerified: true,
+            lastVerifiedAt: new Date().toISOString(),
+            verificationStatus: 'verified'
+          }, { merge: true });
+          
+          console.log('[WaitingVerificationScreen] Usuario final creado en Firestore');
+          
+          if (isMounted) {
+            navigation.replace('Home');
           }
+          return;
         }
-      } catch (error) {
-        console.error('Error checking verification:', error);
+
+        // Si no está verificado, incrementar contador de intentos
         if (isMounted) {
-          setError('Error al verificar el estado. Por favor, intenta nuevamente.');
+          setError('Demasiados intentos. Por favor, intenta de nuevo más tarde.');
         }
-      } finally {
+
+        // Programar siguiente verificación
+        timeoutId = setTimeout(checkVerification, 3000);
+      } catch (e) {
+        console.error('[WaitingVerificationScreen] Error checking verification:', e);
         if (isMounted) {
-          setIsChecking(false);
+          setError('Error al verificar el email. Por favor, intenta de nuevo.');
         }
       }
     };
 
-    // Initial check
     checkVerification();
 
-    // Set up interval for periodic checks
-    const interval = setInterval(checkVerification, 3000);
-
-    // Cleanup
     return () => {
       isMounted = false;
-      clearInterval(interval);
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
     };
-  }, [firebaseUser, navigation]);
+  }, [isConnected]);
+
+  const handleRetry = async () => {
+    if (!isConnected) {
+      setError('No hay conexión a internet. Por favor, verifica tu conexión.');
+      return;
+    }
+
+    setError('');
+    setIsLoading(true);
+
+    try {
+      const user = auth.currentUser;
+      if (!user) {
+        throw new Error('Usuario no encontrado');
+      }
+
+      await sendEmailVerification(user);
+      console.log('[WaitingVerificationScreen] Email de verificación reenviado');
+      
+      // Actualizar intentos en Firestore
+      await setDoc(doc(db, 'users', user.uid), {
+        lastVerificationAttempt: new Date().toISOString(),
+        verificationAttempts: 1
+      }, { merge: true });
+
+      setIsLoading(false);
+    } catch (e) {
+      console.error('[WaitingVerificationScreen] Error al reenviar verificación:', e);
+      setError('Error al reenviar el email de verificación. Por favor, intenta de nuevo.');
+      setIsLoading(false);
+    }
+  };
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#0a0a23' }}>
@@ -85,11 +221,31 @@ export default function WaitingVerificationScreen({ route, navigation }) {
         <View style={styles.cornerDotBL} />
         <View style={styles.cornerDotBR} />
         <Ionicons name="mail-unread" size={scaleDimension(64)} color="#00fff7" style={{ marginBottom: scaleDimension(24) }} />
-        <Text style={styles.title}>Verificando tu cuenta…</Text>
-        <Text style={styles.msg}>
-          {error ? error : 'Revisa tu correo y haz clic en el enlace de verificación. Esta ventana se cerrará automáticamente cuando completes la verificación.'}
-        </Text>
-        {isChecking && <ActivityIndicator size="large" color="#00fff7" style={{ marginTop: scaleDimension(32) }} />}
+        <View style={styles.content}>
+          <Text style={[styles.title, { fontFamily: pixelFont }]}>Verificación de Email</Text>
+          
+          {error ? (
+            <View style={styles.errorContainer}>
+              <Text style={[styles.errorText, { fontFamily: pixelFont }]}>{error}</Text>
+              <RetroButton
+                title="Reintentar"
+                onPress={handleRetry}
+                style={styles.retryButton}
+                textStyle={{ fontFamily: pixelFont }}
+              />
+            </View>
+          ) : (
+            <>
+              <Text style={[styles.message, { fontFamily: pixelFont }]}>
+                Por favor, verifica tu email: {email}
+              </Text>
+              <Text style={[styles.subMessage, { fontFamily: pixelFont }]}>
+                Te hemos enviado un enlace de verificación.
+              </Text>
+              <ActivityIndicator size="large" color="#00fff7" style={styles.loader} />
+            </>
+          )}
+        </View>
       </View>
     </SafeAreaView>
   );
@@ -108,21 +264,44 @@ const styles = StyleSheet.create({
   },
   title: {
     color: '#fff',
-    fontFamily: pixelFont,
     fontSize: scaleFont(24),
     marginBottom: scaleDimension(16),
     textAlign: 'center',
     textShadowColor: '#00fff7',
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: scaleDimension(12),
-  },
-  msg: {
-    color: '#ff2e7e',
     fontFamily: pixelFont,
+  },
+  message: {
+    color: '#fff',
+    fontSize: scaleFont(16),
+    textAlign: 'center',
+    marginBottom: scaleDimension(10),
+    fontFamily: pixelFont,
+  },
+  subMessage: {
+    color: '#ff2e7e',
     fontSize: scaleFont(14),
     textAlign: 'center',
-    marginBottom: scaleDimension(12),
-    paddingHorizontal: scaleDimension(10),
+    marginBottom: scaleDimension(20),
+    fontFamily: pixelFont,
+  },
+  loader: {
+    marginVertical: scaleDimension(20),
+  },
+  errorContainer: {
+    alignItems: 'center',
+    marginTop: scaleDimension(20),
+  },
+  errorText: {
+    color: '#ff2e7e',
+    fontSize: scaleFont(16),
+    textAlign: 'center',
+    marginBottom: scaleDimension(20),
+    fontFamily: pixelFont,
+  },
+  retryButton: {
+    marginTop: scaleDimension(10),
   },
   cornerDotTL: {
     position: 'absolute',
@@ -163,5 +342,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#ff2e7e',
     borderRadius: scaleDimension(6),
     zIndex: 2,
+  },
+  content: {
+    width: '90%',
+    maxWidth: 400,
+    alignItems: 'center',
+    padding: 20,
   },
 }); 

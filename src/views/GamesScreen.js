@@ -118,8 +118,8 @@ export default function GamesScreen({ navigation }) {
   // Actualiza el ancho de la tarjeta si cambia el tamaño de la ventana (web)
   useEffect(() => {
     const updateWidth = () => setCardWidth(Dimensions.get('window').width);
-    Dimensions.addEventListener('change', updateWidth);
-    return () => Dimensions.removeEventListener('change', updateWidth);
+    const subscription = Dimensions.addEventListener('change', updateWidth);
+    return () => subscription?.remove();
   }, []);
 
   // Animación de loading
@@ -484,29 +484,35 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     alignSelf: 'center',
     backgroundColor: '#23233a',
-    borderRadius: Math.max(18, width * 0.025),
-    borderWidth: width * 0.01,
+    borderRadius: Math.max(12, width * 0.02),
+    borderWidth: Math.max(width * 0.008, 2),
     borderColor: '#7d2fff',
-    paddingHorizontal: width * 0.045,
-    paddingVertical: height * 0.01,
-    marginBottom: height * 0.01,
-    marginTop: height * 0.01,
+    paddingHorizontal: Math.max(width * 0.03, 12),
+    paddingVertical: Math.max(height * 0.012, 10),
+    marginBottom: Math.max(height * 0.025, 12),
+    marginTop: Math.max(height * 0.07, 32),
+    maxWidth: '92%',
+    minWidth: 0,
   },
   logoTri: {
     color: '#00fff7',
     fontFamily: pixelFont,
-    fontSize: Math.min(width * 0.1, 38),
+    fontSize: Math.min(width * 0.11, 32),
     letterSpacing: 2,
     marginRight: 2,
     marginLeft: 2,
+    maxWidth: '48%',
+    minWidth: 0,
   },
   logoCade: {
     color: '#ff2e7e',
     fontFamily: pixelFont,
-    fontSize: Math.min(width * 0.1, 38),
+    fontSize: Math.min(width * 0.11, 32),
     letterSpacing: 2,
     marginLeft: 2,
     marginRight: 2,
+    maxWidth: '48%',
+    minWidth: 0,
   },
   cardsScrollWrapper: {
     flex: 1,
@@ -631,6 +637,8 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     marginBottom: Math.max(height * 0.01, 5),
     marginTop: Math.max(height * 0.01, 5),
+    backgroundColor: '#0a0a23',
+    flex: 1,
   },
   trophiesTitle: {
     color: '#00fff7',
@@ -674,6 +682,8 @@ const styles = StyleSheet.create({
   trophyList: {
     marginTop: Math.max(height * 0.018, 5),
     gap: Math.max(height * 0.022, 5),
+    backgroundColor: '#0a0a23',
+    paddingBottom: height * 0.1,
   },
   trophyCard: {
     flexDirection: 'row',
@@ -686,9 +696,9 @@ const styles = StyleSheet.create({
     marginBottom: 0,
   },
   trophyCardLocked: {
-    borderColor: '#aaa',
-    backgroundColor: '#23233a',
-    opacity: 0.7,
+    borderColor: '#888',
+    backgroundColor: '#22242e',
+    opacity: 0.92,
   },
   trophyIcon: {
     width: Math.min(width * 0.13, 38),
@@ -712,7 +722,7 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   trophyTitleGray: {
-    color: '#aaa',
+    color: '#ccc',
     fontFamily: pixelFont,
     fontSize: Math.min(width * 0.045, 15),
     marginBottom: 2,
@@ -723,7 +733,7 @@ const styles = StyleSheet.create({
     fontSize: Math.min(width * 0.035, 12),
   },
   trophyDescGray: {
-    color: '#aaa',
+    color: '#bbb',
     fontFamily: pixelFont,
     fontSize: Math.min(width * 0.035, 12),
   },

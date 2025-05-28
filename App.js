@@ -7,12 +7,14 @@ import LoadingScreen from './src/views/LoadingScreen';
 import { Audio } from 'expo-av';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
+import { NavigationContainer } from '@react-navigation/native';
+import { AuthProvider } from './src/context/AuthContext';
 
 export const AudioContext = React.createContext({ audioOn: false, toggleAudio: () => {} });
 
 export default function App() {
   const [fontsLoaded] = useFonts({
-    PressStart2P_400Regular,
+    'PressStart2P_400Regular': require('./assets/fonts/PressStart2P-Regular.ttf'),
   });
   const [user, setUser] = useState(undefined); // undefined = loading
   const [audioOn, setAudioOn] = useState(false);
@@ -40,7 +42,7 @@ export default function App() {
           if (!webAudioRef.current) {
             const audio = new window.Audio(require('./src/assets/audio-game.mp3'));
             audio.loop = true;
-            audio.volume = 0.05; // volumen muy bajo
+            audio.volume = 0.2;
             webAudioRef.current = audio;
             try { await audio.play(); } catch (e) {}
           } else {
@@ -48,7 +50,7 @@ export default function App() {
           }
         } else if (!sound) {
           try {
-            const { sound: newSound } = await Audio.Sound.createAsync(require('./src/assets/audio-game.mp3'), { shouldPlay: true, isLooping: true, volume: 0.05 });
+            const { sound: newSound } = await Audio.Sound.createAsync(require('./src/assets/audio-game.mp3'), { shouldPlay: true, isLooping: true, volume: 0.2 });
             if (isMounted) setSound(newSound);
           } catch (e) {}
         }
@@ -93,8 +95,12 @@ export default function App() {
 
   if (!fontsLoaded || user === undefined) return <LoadingScreen />;
   return (
-    <AudioContext.Provider value={{ audioOn, toggleAudio }}>
-      <AppNavigator user={user} />
-    </AudioContext.Provider>
+    <AuthProvider>
+      <NavigationContainer>
+        <AudioContext.Provider value={{ audioOn, toggleAudio }}>
+          <AppNavigator user={user} />
+        </AudioContext.Provider>
+      </NavigationContainer>
+    </AuthProvider>
   );
 } 
