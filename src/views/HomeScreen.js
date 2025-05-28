@@ -76,7 +76,7 @@ const HomeScreen = ({ navigation }) => {
                 {/* Scanlines efecto CRT */}
                 <View pointerEvents="none" style={styles.scanlines} />
                 {/* ¡Bienvenido! */}
-                <Text style={[styles.pixelText, styles.welcome, ...pixelStroke]}>¡Bienvenido!</Text>
+                <Text style={[styles.pixelText, styles.welcome, ...pixelStroke, { fontFamily: 'PressStart2P_400Regular' }]}>¡Bienvenido!</Text>
                 {/* TRICADE con borde pixelado */}
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: Math.max(12, width * 0.03) }}>
                   {/* TRI */}
@@ -84,18 +84,20 @@ const HomeScreen = ({ navigation }) => {
                     styles.pixelText,
                     styles.tri,
                     styles.title,
-                    ...pixelStroke
+                    ...pixelStroke,
+                    { fontFamily: 'PressStart2P_400Regular' }
                   ]}>TRI</Text>
                   {/* CADE */}
                   <Text style={[
                     styles.pixelText,
                     styles.cade,
                     styles.title,
-                    ...pixelStroke
+                    ...pixelStroke,
+                    { fontFamily: 'PressStart2P_400Regular' }
                   ]}>CADE</Text>
                 </View>
                 {/* Centro de juegos */}
-                <Text style={[styles.pixelText, styles.subtitle, ...pixelStroke]}>Centro de juegos</Text>
+                <Text style={[styles.pixelText, styles.subtitle, ...pixelStroke, { fontFamily: 'PressStart2P_400Regular' }]}>Centro de juegos</Text>
               </View>
             </View>
           </View>

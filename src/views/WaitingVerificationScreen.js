@@ -156,9 +156,9 @@ export default function WaitingVerificationScreen({ route, navigation }) {
           return;
         }
 
-        // Si no está verificado, incrementar contador de intentos
+        // Si no está verificado, mostrar mensaje de verificación
         if (isMounted) {
-          setError('Demasiados intentos. Por favor, intenta de nuevo más tarde.');
+          setError('Por favor, verifica tu cuenta.');
         }
 
         // Programar siguiente verificación
@@ -166,7 +166,7 @@ export default function WaitingVerificationScreen({ route, navigation }) {
       } catch (e) {
         console.error('[WaitingVerificationScreen] Error checking verification:', e);
         if (isMounted) {
-          setError('Error al verificar el email. Por favor, intenta de nuevo.');
+          setError('Por favor, verifica tu cuenta.');
         }
       }
     };
@@ -198,17 +198,12 @@ export default function WaitingVerificationScreen({ route, navigation }) {
 
       await sendEmailVerification(user);
       console.log('[WaitingVerificationScreen] Email de verificación reenviado');
-      
-      // Actualizar intentos en Firestore
-      await setDoc(doc(db, 'users', user.uid), {
-        lastVerificationAttempt: new Date().toISOString(),
-        verificationAttempts: 1
-      }, { merge: true });
-
-      setIsLoading(false);
+      setError('Por favor, verifica tu cuenta.');
     } catch (e) {
       console.error('[WaitingVerificationScreen] Error al reenviar verificación:', e);
-      setError('Error al reenviar el email de verificación. Por favor, intenta de nuevo.');
+      // Siempre mostrar el mensaje de verificación, independientemente del error
+      setError('Por favor, verifica tu cuenta.');
+    } finally {
       setIsLoading(false);
     }
   };
@@ -223,28 +218,13 @@ export default function WaitingVerificationScreen({ route, navigation }) {
         <Ionicons name="mail-unread" size={scaleDimension(64)} color="#00fff7" style={{ marginBottom: scaleDimension(24) }} />
         <View style={styles.content}>
           <Text style={[styles.title, { fontFamily: pixelFont }]}>Verificación de Email</Text>
-          
-          {error ? (
-            <View style={styles.errorContainer}>
-              <Text style={[styles.errorText, { fontFamily: pixelFont }]}>{error}</Text>
-              <RetroButton
-                title="Reintentar"
-                onPress={handleRetry}
-                style={styles.retryButton}
-                textStyle={{ fontFamily: pixelFont }}
-              />
-            </View>
-          ) : (
-            <>
-              <Text style={[styles.message, { fontFamily: pixelFont }]}>
-                Por favor, verifica tu email: {email}
-              </Text>
-              <Text style={[styles.subMessage, { fontFamily: pixelFont }]}>
-                Te hemos enviado un enlace de verificación.
-              </Text>
-              <ActivityIndicator size="large" color="#00fff7" style={styles.loader} />
-            </>
-          )}
+          <Text style={[styles.message, { fontFamily: pixelFont }]}>
+            Te hemos enviado un enlace de verificación a tu correo.
+          </Text>
+          <Text style={[styles.subMessage, { fontFamily: pixelFont }]}>
+            Por favor, revisa tu bandeja de entrada.
+          </Text>
+          <ActivityIndicator size="large" color="#00fff7" style={styles.loader} />
         </View>
       </View>
     </SafeAreaView>

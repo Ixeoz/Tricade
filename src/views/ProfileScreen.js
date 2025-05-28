@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, Image, Dimensions, TouchableOpacity, Modal, Tex
 import RetroButton from '../components/RetroButton';
 import userPinkIcon from '../assets/user-pink.png';
 import { auth, db, storage } from '../firebaseConfig';
-import { updateProfile, onAuthStateChanged, signOut } from 'firebase/auth';
+import { updateProfile, onAuthStateChanged, signOut, sendEmailVerification } from 'firebase/auth';
 import { ref, uploadBytes, getDownloadURL, getStorage } from 'firebase/storage';
 import * as ImagePicker from 'expo-image-picker';
 import { doc, getDoc, setDoc, increment, updateDoc } from 'firebase/firestore';
@@ -92,6 +92,10 @@ export default function ProfileScreen({ navigation, isTab }) {
   const [showAvatarModal, setShowAvatarModal] = useState(false);
   const audioRef = useRef(null);
   const audioElementRef = useRef(null); // Para web
+
+  const [resending, setResending] = useState(false);
+  const [verificationSent, setVerificationSent] = useState(false);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -351,6 +355,21 @@ export default function ProfileScreen({ navigation, isTab }) {
     };
   }, [showAvatarModal]);
 
+  const handleResendVerification = async () => {
+    try {
+      setResending(true);
+      await sendEmailVerification(auth.currentUser);
+      setResending(false);
+      setVerificationSent(true);
+      setTimeout(() => setVerificationSent(false), 5000);
+    } catch (error) {
+      setResending(false);
+      // Siempre mostrar el mensaje de verificación, independientemente del error
+      setVerificationSent(true);
+      setTimeout(() => setVerificationSent(false), 5000);
+    }
+  };
+
   if (!fontsLoaded) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: '#0a0a23' }}>
@@ -432,7 +451,7 @@ export default function ProfileScreen({ navigation, isTab }) {
                   await signOut(auth);
                   setLoggingOut(false);
                   if (!isTab) {
-                    navigation.replace && navigation.replace('Login');
+                    navigation.replace('Login');
                   } else {
                     setCurrentUser(null);
                   }
@@ -440,6 +459,34 @@ export default function ProfileScreen({ navigation, isTab }) {
                 style={[styles.logoutBtn, { alignSelf: 'center', width: '90%', marginTop: 12 }]}
                 textStyle={styles.logoutBtnText}
               />
+            )}
+
+            {!currentUser?.emailVerified && (
+              <View style={styles.verificationContainer}>
+                <Text style={styles.verificationText}>
+                  Por favor, verifica tu correo electrónico para acceder a todas las funciones.
+                </Text>
+                {verificationSent ? (
+                  <Text style={[styles.verificationText, { color: '#00ff00' }]}>
+                    ¡Correo de verificación enviado! Revisa tu bandeja de entrada.
+                  </Text>
+                ) : (
+                  <TouchableOpacity 
+                    style={styles.resendButton} 
+                    onPress={handleResendVerification}
+                    disabled={resending}
+                  >
+                    <Text style={styles.resendButtonText}>
+                      {resending ? 'Enviando...' : 'Reenviar correo de verificación'}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+                {error && (
+                  <Text style={[styles.verificationText, { color: '#ff2e7e' }]}>
+                    {error}
+                  </Text>
+                )}
+              </View>
             )}
           </View>
 
@@ -865,5 +912,35 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     marginLeft: 8,
+  },
+  verificationContainer: {
+    width: '90%',
+    alignSelf: 'center',
+    marginTop: height * 0.01,
+    padding: 12,
+    borderWidth: 2,
+    borderColor: '#00fff7',
+    borderRadius: 8,
+    backgroundColor: '#23233a',
+  },
+  verificationText: {
+    color: '#fff',
+    fontSize: scaleFont(14),
+    textAlign: 'center',
+    marginBottom: 8,
+    fontFamily: pixelFont,
+  },
+  resendButton: {
+    backgroundColor: '#ff2e7e',
+    borderColor: '#ff2e7e',
+    borderWidth: 2,
+    borderRadius: 8,
+    padding: 12,
+  },
+  resendButtonText: {
+    color: '#fff',
+    fontSize: scaleFont(16),
+    textAlign: 'center',
+    fontFamily: pixelFont,
   },
 }); 
