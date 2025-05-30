@@ -29,14 +29,21 @@
         "VIBRATE",
         "CAMERA",
         "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE"
+        "WRITE_EXTERNAL_STORAGE",
+        "READ_MEDIA_IMAGES",
+        "READ_MEDIA_VIDEO"
       ]
     },
     "plugins": [
       "expo-font",
       "expo-av",
-      "expo-image-picker",
-      "expo-sensors"
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "La aplicación necesita acceso a tus fotos para permitirte seleccionar una imagen de perfil.",
+          "cameraPermission": "La aplicación necesita acceso a la cámara para permitirte tomar una foto de perfil."
+        }
+      ]
     ],
     "extra": {
       "eas": {
