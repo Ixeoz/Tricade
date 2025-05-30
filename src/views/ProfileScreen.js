@@ -533,34 +533,6 @@ export default function ProfileScreen({ navigation, isTab }) {
                 textStyle={styles.logoutBtnText}
               />
             )}
-
-            {!currentUser?.emailVerified && (
-              <View style={styles.verificationContainer}>
-                <Text style={styles.verificationText}>
-                  Por favor, verifica tu correo electrónico para acceder a todas las funciones.
-                </Text>
-                {verificationSent ? (
-                  <Text style={[styles.verificationText, { color: '#00ff00' }]}>
-                    ¡Correo de verificación enviado! Revisa tu bandeja de entrada.
-                  </Text>
-                ) : (
-                  <TouchableOpacity 
-                    style={styles.resendButton} 
-                    onPress={handleResendVerification}
-                    disabled={resending}
-                  >
-                    <Text style={styles.resendButtonText}>
-                      {resending ? 'Enviando...' : 'Reenviar correo de verificación'}
-                    </Text>
-                  </TouchableOpacity>
-                )}
-                {error && (
-                  <Text style={[styles.verificationText, { color: '#ff2e7e' }]}>
-                    {error}
-                  </Text>
-                )}
-              </View>
-            )}
           </View>
 
           {/* Menú inferior siempre visible */}
