@@ -52,7 +52,7 @@ const avatarOptions = [
 const audioOnIcon = require('../assets/audio-on.png');
 const audioOffIcon = require('../assets/audio-off.png');
 const audioGame = require('../assets/audio-game.mp3');
-const audioPapi = require('../assets/audio-papi.mp3');
+const audioPapi = require('../assets/audio-pizza.mp3');
 
 // Contexto global para el usuario
 export const UserCacheContext = createContext();
@@ -90,6 +90,7 @@ export default function ProfileScreen({ navigation, isTab }) {
   const formSlideAnim = useRef(new Animated.Value(1)).current;
 
   const [showAvatarModal, setShowAvatarModal] = useState(false);
+  const [showProfilePicModal, setShowProfilePicModal] = useState(false);
   const audioRef = useRef(null);
   const audioElementRef = useRef(null); // Para web
 
@@ -355,6 +356,54 @@ export default function ProfileScreen({ navigation, isTab }) {
     };
   }, [showAvatarModal]);
 
+  // Reproducir audio al abrir el modal de foto de perfil
+  useEffect(() => {
+    if (showProfilePicModal) {
+      if (Platform.OS === 'web') {
+        if (audioElementRef.current) {
+          audioElementRef.current.currentTime = 0;
+          audioElementRef.current.volume = 0.4;
+          audioElementRef.current.play();
+        }
+      } else {
+        (async () => {
+          if (audioRef.current) {
+            await audioRef.current.unloadAsync();
+          }
+          const { sound } = await Audio.Sound.createAsync(audioPapi);
+          audioRef.current = sound;
+          await sound.setVolumeAsync(0.4);
+          await sound.playAsync();
+        })();
+      }
+    } else {
+      if (Platform.OS === 'web') {
+        if (audioElementRef.current) {
+          audioElementRef.current.pause();
+          audioElementRef.current.currentTime = 0;
+        }
+      } else {
+        if (audioRef.current) {
+          audioRef.current.unloadAsync();
+          audioRef.current = null;
+        }
+      }
+    }
+    return () => {
+      if (Platform.OS === 'web') {
+        if (audioElementRef.current) {
+          audioElementRef.current.pause();
+          audioElementRef.current.currentTime = 0;
+        }
+      } else {
+        if (audioRef.current) {
+          audioRef.current.unloadAsync();
+          audioRef.current = null;
+        }
+      }
+    };
+  }, [showProfilePicModal]);
+
   const handleResendVerification = async () => {
     try {
       setResending(true);
@@ -400,11 +449,35 @@ export default function ProfileScreen({ navigation, isTab }) {
             <Text style={[styles.title, ...pixelStroke, { fontFamily: pixelFont }]}>PERFIL DE USUARIO</Text>
 
             {/* Avatar */}
-            <TouchableOpacity activeOpacity={0.8} onPress={() => setShowAvatarModal(true)}>
+            <TouchableOpacity activeOpacity={0.8} onPress={() => setShowProfilePicModal(true)}>
               <Animated.View style={[styles.avatarBox, { opacity: fadeAnim }]}> 
                 <Image source={avatar} style={styles.avatar} resizeMode="contain" />
               </Animated.View>
             </TouchableOpacity>
+
+            {/* Modal para ver la foto de perfil */}
+            <Modal
+              visible={showProfilePicModal}
+              transparent={true}
+              animationType="fade"
+              onRequestClose={() => setShowProfilePicModal(false)}
+            >
+              <View style={styles.modalOverlay}>
+                <View style={styles.profilePicModalContent}>
+                  <Image 
+                    source={avatar} 
+                    style={styles.enlargedAvatar}
+                    resizeMode="contain"
+                  />
+                  <TouchableOpacity 
+                    style={styles.closeButton}
+                    onPress={() => setShowProfilePicModal(false)}
+                  >
+                    <Text style={styles.closeButtonText}>SALIR</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </Modal>
 
             {/* Nombre de usuario */}
             <View style={styles.usernameBox}>
@@ -942,5 +1015,44 @@ const styles = StyleSheet.create({
     fontSize: scaleFont(16),
     textAlign: 'center',
     fontFamily: pixelFont,
+  },
+  enlargedAvatar: {
+    width: Math.min(width * 0.8, 400),
+    height: Math.min(width * 0.8, 400),
+    borderRadius: width * 0.1,
+  },
+  profilePicModalContent: {
+    padding: width * 0.05,
+    backgroundColor: '#23233a',
+    borderRadius: width * 0.1,
+    borderWidth: width * 0.01,
+    borderColor: '#00fff7',
+    shadowColor: '#00fff7',
+    shadowOpacity: 0.45,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 0 },
+    alignItems: 'center',
+    gap: width * 0.04,
+  },
+  closeButton: {
+    width: '80%',
+    paddingHorizontal: width * 0.04,
+    paddingVertical: width * 0.02,
+    backgroundColor: '#ff2e7e',
+    borderWidth: width * 0.008,
+    borderColor: '#00fff7',
+    borderRadius: width * 0.02,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#ff2e7e',
+    shadowOpacity: 0.6,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 0 },
+  },
+  closeButtonText: {
+    color: '#fff',
+    fontSize: scaleFont(16),
+    fontFamily: pixelFont,
+    textAlign: 'center',
   },
 }); 

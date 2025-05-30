@@ -27,7 +27,7 @@ const AppNavigator = ({ user }) => (
       headerShown: false,
       cardStyle: { backgroundColor: '#0a0a23' }
     }}
-    initialRouteName={user ? 'Home' : 'Login'}
+    initialRouteName="Login"
   >
     {/* Auth screens - always available */}
     <Stack.Screen name="Login" component={LoginScreen} />
